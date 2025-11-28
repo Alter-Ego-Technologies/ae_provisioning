@@ -1,8 +1,8 @@
 #!/bin/bash
 set -e
 
-REPO_URL="https://github.com/YOUR_GITHUB_USER/linode-bootstrap.git"
-TARGET_DIR="/root/linode-bootstrap"
+REPO_URL="https://github.com/Alter-Ego-Technologies/ae_provisioning.git"
+TARGET_DIR="/root/ae_provisioning"
 
 apt update -y
 apt install -y git
