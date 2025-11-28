@@ -33,12 +33,12 @@ AEP installs Alter Ego’s standardized health monitoring system:
 - Weekly summary email report
 
 ### Cron Jobs
-*/5 * * * * server_health_check.sh\n
-0 9 * * SUN server_health_check.sh summary\n
+- */5 * * * * server_health_check.sh
+- 0 9 * * SUN server_health_check.sh summary\n
 
 Alerts go to:
-server-alerts@alteregotech.com
-admins@clearpointreporting.com
+- server-alerts@alteregotech.com
+- admins@clearpointreporting.com
 
 ## 📨 SMTP Relay Configuration
 AEP installs and configures `msmtp` for alert delivery.  
