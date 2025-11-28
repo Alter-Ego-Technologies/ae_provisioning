@@ -33,8 +33,8 @@ AEP installs Alter Ego’s standardized health monitoring system:
 - Weekly summary email report
 
 ### Cron Jobs
-*/5 * * * * server_health_check.sh
-0 9 * * SUN server_health_check.sh summary
+*/5 * * * * server_health_check.sh\n
+0 9 * * SUN server_health_check.sh summary\n
 
 Alerts go to:
 server-alerts@alteregotech.com
