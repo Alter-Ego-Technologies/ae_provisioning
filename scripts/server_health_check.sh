@@ -1,4 +1,3 @@
-HOST="Alter Ego Web Server"
 #!/bin/bash
 # Server Health Monitor - Disk + Memory + CPU + Volumes
 # Usage:
@@ -15,10 +14,6 @@ MODE=$1
 HOST="Alter Ego Web Server"
 DATE=$(date "+%Y-%m-%d %H:%M:%S")
 ALERT=0
-
-# =============================
-# Message starts with REAL newlines
-# =============================
 
 MSG="Server: $HOST
 Date: $DATE
@@ -84,28 +79,27 @@ else
     MSG+=" ✅"
 fi
 
-
 # =============================
-# SEND EMAIL (with correct line breaks)
+# SEND EMAIL / LOG
 # =============================
 
 if [ "$MODE" == "summary" ]; then
-cat <<EOF | msmtp -t
+cat <<REPORT | msmtp -t
 To: $ALERT_EMAIL
 From: gabe@alteregotech.com
 Subject: 📊 Weekly Summary: $HOST System Report
 
 $MSG
-EOF
+REPORT
 
 elif [ "$ALERT" -eq 1 ]; then
-cat <<EOF | msmtp -t
+cat <<REPORT | msmtp -t
 To: $ALERT_EMAIL
 From: gabe@alteregotech.com
 Subject: ⚠️ ALERT: $HOST - Resource usage warning
 
 $MSG
-EOF
+REPORT
 
 else
     echo "[$DATE] OK Disk/Memory/CPU normal" >> /var/log/server_health.log
