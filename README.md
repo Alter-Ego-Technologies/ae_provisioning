@@ -46,13 +46,21 @@ Password is placeholder and must be updated post-install.
 
 # 📂 Repository Structure
 AEP/
+
 ├── provision.sh # Main provisioning automation
+
 ├── bootstrap.sh # One-line installer
+
 ├── scripts/
+
 │ └── server_health_check.sh # Alert + summary monitoring
+
 ├── config/
+
 │ └── msmtprc # SMTP relay config
+
 └── README.md
+
 
 # 🏗️ Deploying AEP on a New Server
 
