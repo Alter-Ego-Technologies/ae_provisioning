@@ -1,100 +1,164 @@
 #!/bin/bash
 set -e
 
-# Determine repo path based on where this script lives
 REPO_PATH="$(cd "$(dirname "$0")" && pwd)"
 
 USERNAME="gabe"
 SSH_PORT="2222"
 
-echo "==> Running provisioning from Git repo: $REPO_PATH"
+echo "======================================================="
+echo "   Alter Ego Provisioning (AEP) - Server Bootstrap"
+echo "======================================================="
+
 
 echo "==> Updating system"
 apt update -y && apt upgrade -y
 
-echo "==> Installing base packages (firewall, mail, tools)"
-apt install -y ufw msmtp msmtp-mta ca-certificates bsd-mailx bc git
 
-echo "==> Creating user: $USERNAME"
+
+# ---------------------------------------------------------
+# REMOVE SNAP + BLOCK FUTURE AUTO-INSTALLS
+# ---------------------------------------------------------
+echo "==> Removing snapd and preventing snap auto-installs"
+
+# Stop snap services if present
+systemctl stop snapd 2>/dev/null || true
+systemctl disable snapd 2>/dev/null || true
+systemctl stop snapd.socket 2>/dev/null || true
+systemctl disable snapd.socket 2>/dev/null || true
+
+# Remove snap packages
+apt purge -y snapd 2>/dev/null || true
+
+# Remove lxd-installer (this silently installs snapd)
+apt purge -y lxd-installer 2>/dev/null || true
+
+# Clean leftover snap directories
+rm -rf /snap /var/snap /var/lib/snapd /var/cache/snapd 2>/dev/null || true
+
+echo "==> Snap removed and blocked successfully"
+
+
+
+# ---------------------------------------------------------
+# INSTALL PIPX + LINODE CLI
+# ---------------------------------------------------------
+echo "==> Installing pipx + Linode CLI"
+
+apt install -y pipx
+pipx ensurepath
+
+# Add pipx bin path for root
+if ! grep -q "/root/.local/bin" /root/.bashrc; then
+    echo 'export PATH="/root/.local/bin:$PATH"' >> /root/.bashrc
+fi
+
+export PATH="/root/.local/bin:$PATH"
+
+pipx install --force linode-cli
+
+echo "==> Verifying Linode CLI installation"
+which linode-cli || echo "ERROR: linode-cli not found in PATH"
+linode-cli --version || echo "ERROR: linode-cli failed to execute"
+
+echo "==> Linode CLI installed successfully"
+
+# ---------------------------------------------------------
+# CREATE USER & SSH SETUP
+# ---------------------------------------------------------
+echo "==> Creating privileged user: $USERNAME"
+
 if ! id "$USERNAME" &>/dev/null; then
-  adduser --disabled-password --gecos "" "$USERNAME"
+    adduser --disabled-password --gecos "" "$USERNAME"
 fi
 
-echo "==> Allowing passwordless sudo for $USERNAME"
+echo "==> Enabling passwordless sudo"
 usermod -aG sudo "$USERNAME"
-echo "$USERNAME ALL=(ALL) NOPASSWD:ALL" > /etc/sudoers.d/90-"$USERNAME"
-chmod 440 /etc/sudoers.d/90-"$USERNAME"
+echo "$USERNAME ALL=(ALL) NOPASSWD:ALL" > /etc/sudoers.d/90-$USERNAME
+chmod 440 /etc/sudoers.d/90-$USERNAME
 
-echo "==> Creating SSH directory & keys for user"
-mkdir -p /home/"$USERNAME"/.ssh
-chmod 700 /home/"$USERNAME"/.ssh
 
-if [ ! -f /home/"$USERNAME"/.ssh/id_ed25519 ]; then
-  echo "==> Generating SSH keys for $USERNAME"
-  ssh-keygen -t ed25519 -f /home/"$USERNAME"/.ssh/id_ed25519 -N "" -C "$USERNAME@$(hostname)"
+echo "==> Preparing SSH directory and keys for user"
+mkdir -p /home/$USERNAME/.ssh
+chmod 700 /home/$USERNAME/.ssh
+
+if [ ! -f "/home/$USERNAME/.ssh/id_ed25519" ]; then
+    echo "==> Generating SSH keypair"
+    ssh-keygen -t ed25519 -f /home/$USERNAME/.ssh/id_ed25519 -N "" -C "$USERNAME@$(hostname)"
 fi
 
-cat /home/"$USERNAME"/.ssh/id_ed25519.pub > /home/"$USERNAME"/.ssh/authorized_keys
-chmod 600 /home/"$USERNAME"/.ssh/authorized_keys
-chown -R "$USERNAME":"$USERNAME" /home/"$USERNAME"/.ssh
+cat /home/$USERNAME/.ssh/id_ed25519.pub > /home/$USERNAME/.ssh/authorized_keys
+chmod 600 /home/$USERNAME/.ssh/authorized_keys
+chown -R $USERNAME:$USERNAME /home/$USERNAME/.ssh
 
-echo "==> Ensuring SSH privilege separation directory exists"
-/bin/mkdir -p /run/sshd
+
+
+# ---------------------------------------------------------
+# SSH HARDENING
+# ---------------------------------------------------------
+echo "==> Hardening SSH"
+
+mkdir -p /run/sshd
 chmod 755 /run/sshd
 
-echo "==> Hardening sshd_config and setting port $SSH_PORT"
-
-# Remove existing Port lines, add one fresh
 sed -i '/^[Pp]ort /d' /etc/ssh/sshd_config
 echo "Port $SSH_PORT" >> /etc/ssh/sshd_config
 
-# Disable password login & root login
 sed -i 's/#PasswordAuthentication yes/PasswordAuthentication no/' /etc/ssh/sshd_config || true
 sed -i 's/PasswordAuthentication yes/PasswordAuthentication no/' /etc/ssh/sshd_config || true
 
 sed -i 's/#PermitRootLogin.*/PermitRootLogin no/' /etc/ssh/sshd_config || true
 sed -i 's/PermitRootLogin yes/PermitRootLogin no/' /etc/ssh/sshd_config || true
 
-# Ensure PubkeyAuthentication is enabled
 sed -i 's/#PubkeyAuthentication yes/PubkeyAuthentication yes/' /etc/ssh/sshd_config || true
 
-echo "==> Validating SSH configuration"
-if ! sshd -t; then
-    echo "ERROR: sshd configuration invalid. Aborting."
-    exit 1
-fi
+echo "==> Validating SSH config"
+sshd -t
 
-echo "==> Restarting SSH"
 systemctl restart ssh
+echo "==> SSH hardened and restarted"
 
+
+
+# ---------------------------------------------------------
+# FIREWALL SETUP
+# ---------------------------------------------------------
 echo "==> Configuring UFW firewall"
+
 ufw default deny incoming
 ufw default allow outgoing
 ufw allow "$SSH_PORT"/tcp
 ufw --force enable
 
-# --------------------------------------------------
-# msmtp configuration (from repo)
-# --------------------------------------------------
-echo "==> Installing msmtp config from $REPO_PATH/config/msmtprc"
-install -m 600 "$REPO_PATH/config/msmtprc" /etc/msmtprc
 
+
+# ---------------------------------------------------------
+# INSTALL MSMTP CONFIG
+# ---------------------------------------------------------
+echo "==> Installing msmtp config"
+
+install -m 600 "$REPO_PATH/config/msmtprc" /etc/msmtprc
 touch /var/log/msmtp.log
 chmod 640 /var/log/msmtp.log || true
 
-# --------------------------------------------------
-# Install server monitoring script
-# --------------------------------------------------
-echo "==> Installing server health monitoring script"
+
+
+# ---------------------------------------------------------
+# INSTALL SERVER MONITORING SCRIPT
+# ---------------------------------------------------------
+echo "==> Installing server_health_check.sh"
+
 install -m 755 "$REPO_PATH/scripts/server_health_check.sh" /usr/local/bin/server_health_check.sh
 
 touch /var/log/server_health.log
 chmod 644 /var/log/server_health.log
 
-# --------------------------------------------------
-# Cron: every 5 minutes + weekly summary
-# --------------------------------------------------
-echo "==> Creating cron entries for monitoring"
+
+
+# ---------------------------------------------------------
+# CRON JOBS
+# ---------------------------------------------------------
+echo "==> Installing cron jobs for monitoring"
 
 cat > /etc/cron.d/server_health_check << 'EOF'
 */5 * * * * root /usr/local/bin/server_health_check.sh
@@ -103,24 +167,25 @@ EOF
 
 chmod 644 /etc/cron.d/server_health_check
 
-# --------------------------------------------------
-# Show SSH private key (for grabbing via console)
-# --------------------------------------------------
+
+
+# ---------------------------------------------------------
+# OUTPUT PRIVATE SSH KEY
+# ---------------------------------------------------------
 echo "======================================================="
-echo "                SSH PRIVATE KEY BELOW"
+echo "              SSH PRIVATE KEY FOR $USERNAME"
 echo "======================================================="
 echo
-cat /home/"$USERNAME"/.ssh/id_ed25519
+cat /home/$USERNAME/.ssh/id_ed25519
 echo
-echo "======================================================="
-echo "Copy the above PRIVATE KEY into a file on your computer."
-echo "Save as: id_ed25519 and protect it."
+echo "SAVE THIS KEY NOW — YOU WILL NOT SEE IT AGAIN"
 echo "======================================================="
 
-echo
+
 echo "==> Provisioning complete!"
-echo "SSH port: $SSH_PORT"
 echo "User: $USERNAME"
-echo "Monitoring: /usr/local/bin/server_health_check.sh"
-echo "Cron: /etc/cron.d/server_health_check"
-echo "Remember to edit /etc/msmtprc and set the real SMTP password."
+echo "SSH Port: $SSH_PORT"
+echo "Monitoring: server_health_check.sh + cron"
+echo "Linode CLI: pipx-installed"
+echo "Snap: REMOVED & BLOCKED"
+echo "======================================================="
