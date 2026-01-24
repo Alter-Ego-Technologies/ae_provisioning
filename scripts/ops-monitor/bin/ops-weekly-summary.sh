@@ -12,7 +12,7 @@ START="$(date -d '7 days ago' -Is 2>/dev/null || date -Is)"
 
 section() {
   echo
-  echo "==== $* ===="
+  echo "==== 🔹 $* ===="
 }
 
 # #legacy_health_check() {
@@ -31,7 +31,7 @@ mail_section() {
   COMPOSE="/usr/bin/docker compose -f ${MAILCOW_ROOT}/docker-compose.yml"
 
   if [[ -d "$MAILCOW_ROOT" && -x /usr/bin/docker ]]; then
-    section "Mail (Mailcow)"
+    section "📮 Mail (Mailcow)"
 
     echo "-- Postfix queue (tail) --"
     ${COMPOSE} exec postfix-mailcow postqueue -p 2>/dev/null | tail -n 40 || true
@@ -48,7 +48,7 @@ mail_section() {
     echo "-- Acme (last 50 lines) --"
     ${COMPOSE} logs --tail 50 acme-mailcow 2>/dev/null || true
   else
-    section "Mail (Postfix/Dovecot)"
+    section "📮 Mail (Postfix/Dovecot)"
     if command -v postqueue >/dev/null 2>&1; then
       echo "-- Postfix queue (tail) --"
       postqueue -p 2>/dev/null | tail -n 40 || true
@@ -68,22 +68,22 @@ mail_section() {
 
 body="$(
 {
-  echo "WEEKLY OPS SUMMARY"
-  echo "Host: ${HOST}"
-  echo "Role: ${ROLE}"
-  echo "Window: ${START} -> ${NOW}"
+  echo "📊 WEEKLY OPS SUMMARY"
+  echo "🖥️ Host: ${HOST}"
+  echo "🧩 Role: ${ROLE}"
+  echo "⏳ Window: ${START} -> ${NOW}"
 
-  section "Uptime / Reboots"
+  section "⏱️ Uptime / Reboots"
   uptime || true
   last reboot | head -n 10 || true
 
-  section "Disk usage"
+  section "💽 Disk usage"
   # Exclude noisy/ephemeral filesystems (overlay, tmpfs, devtmpfs, squashfs)
   df -hT -P -x overlay -x tmpfs -x devtmpfs -x squashfs || true
   echo
   df -i -P -x overlay -x tmpfs -x devtmpfs -x squashfs || true
 
-  section "CPU / Memory (current)"
+  section "🧠 CPU / Memory (current)"
   echo "-- loadavg --"
   cat /proc/loadavg || true
   echo
@@ -96,19 +96,19 @@ body="$(
   echo "-- top mem processes --"
   ps aux --sort=-%mem | head -n 15 || true
 
-  section "Systemd health"
+  section "🩺 Systemd health"
   echo "-- failed units --"
   systemctl --failed --no-pager || true
   echo
   echo "-- warnings/errors (7d, tail) --"
   journalctl --since "7 days ago" -p warning..alert --no-pager 2>/dev/null | tail -n 300 || true
 
-  section "Auth / SSH signals (7d, tail)"
+  section "🔐 Auth / SSH signals (7d, tail)"
   journalctl -u ssh --since "7 days ago" --no-pager 2>/dev/null | grep -E "Failed password|Invalid user|Accepted password|Accepted publickey" | tail -n 200 || true
   journalctl -u sshd --since "7 days ago" --no-pager 2>/dev/null | grep -E "Failed password|Invalid user|Accepted password|Accepted publickey" | tail -n 200 || true
 
   if [[ -n "${CERT_PATHS:-}" ]]; then
-    section "Certificate expiry"
+    section "📜 Certificate expiry"
     command -v openssl >/dev/null 2>&1 && for p in ${CERT_PATHS}; do
       [[ -f "$p" ]] || continue
       echo "$p: $(openssl x509 -enddate -noout -in "$p" 2>/dev/null || true)"
@@ -116,7 +116,7 @@ body="$(
   fi
 
   if [[ -n "${BACKUP_OK_FILE:-}" ]]; then
-    section "Backup heartbeat"
+    section "💾 Backup heartbeat"
     if [[ -e "${BACKUP_OK_FILE}" ]]; then
       ls -l "${BACKUP_OK_FILE}" || true
       echo "mtime: $(date -d "@$(stat -c %Y "${BACKUP_OK_FILE}")" -Is 2>/dev/null || true)"
