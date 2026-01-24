@@ -1,7 +1,8 @@
 #!/bin/bash
 set -e
 
-REPO_PATH="$(cd "$(dirname "$0")" && pwd)"
+# Resolve repo root dynamically
+REPO_PATH="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 USERNAME="gabe"
 SSH_PORT="2222"
