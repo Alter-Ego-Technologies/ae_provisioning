@@ -222,8 +222,11 @@ container_check() {
   # Check containers defined in config
   for container in ${CONTAINERS}; do
     local state
-    # Prefer inspect for exact name; fall back to ps
-    state="$(docker inspect -f '{{.State.Status}}' "$container" 2>/dev/null || docker ps -a --filter name="^/${container}$" --format '{{.State}}' 2>/dev/null)"
+    # Try exact name via inspect, then fuzzy match via ps (use first hit)
+    state="$(docker inspect -f '{{.State.Status}}' "$container" 2>/dev/null || true)"
+    if [[ -z "$state" ]]; then
+      state="$(docker ps -a --filter name="${container}" --format '{{.State}}' 2>/dev/null | head -n1)"
+    fi
     [[ -z "$state" ]] && state="missing"
     
     local status="OK"
