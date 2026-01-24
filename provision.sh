@@ -211,9 +211,6 @@ provision_mail() {
   # ---------------------------------------------------------
   echo "==> Installing Mailcow maintenance scripts"
 
-  install -m 0755 "$REPO_PATH/scripts/mail/domain-warmup.sh" \
-    /usr/local/bin/domain-warmup.sh
-
   install -m 0755 "$REPO_PATH/scripts/mail/mailcow-health-email.sh" \
     /usr/local/bin/mailcow-health-email.sh
 
@@ -232,7 +229,6 @@ provision_mail() {
 SHELL=/bin/bash
 PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 
-0 */2 * * * root /usr/local/bin/domain-warmup.sh >> /var/log/domain-warmup.log 2>&1
 0 6 * * 1 root /usr/local/bin/mailcow-health-email.sh >> /var/log/mailcow-health-email.log 2>&1
 0 3 * * * root /usr/local/bin/docker-clean.sh >> /var/log/docker-clean.log 2>&1
 0 4 * * 0 root /usr/bin/docker system prune -af >/dev/null 2>&1
@@ -245,9 +241,9 @@ EOF
 
 echo "==> Removing legacy Mailcow cron jobs from root crontab"
 
-if crontab -l 2>/dev/null | grep -E -q 'domain-warmup\.sh|mailcow-health-email\.sh|docker-clean\.sh|mailcow-year-archive\.sh|acme-mailcow'; then
+if crontab -l 2>/dev/null | grep -E -q 'mailcow-health-email\.sh|docker-clean\.sh|mailcow-year-archive\.sh|acme-mailcow'; then
   crontab -l | grep -Ev \
-    'domain-warmup\.sh|mailcow-health-email\.sh|docker-clean\.sh|mailcow-year-archive\.sh|acme-mailcow' \
+    'mailcow-health-email\.sh|docker-clean\.sh|mailcow-year-archive\.sh|acme-mailcow' \
     | crontab -
 fi
 
