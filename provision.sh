@@ -305,6 +305,7 @@ if [[ "$SERVER_ROLE" == "mail" ]]; then
 fi
 
 echo "==> Provisioning complete!"
+echo "======================================================="
 echo "User: $ADMIN_USER"
 echo "SSH Port: $SSH_PORT"
 echo "Monitoring: ops-monitor (role=${SERVER_ROLE})"
