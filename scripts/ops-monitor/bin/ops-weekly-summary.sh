@@ -78,9 +78,10 @@ body="$(
   last reboot | head -n 10 || true
 
   section "Disk usage"
-  df -hT -P || true
+  # Exclude noisy/ephemeral filesystems (overlay, tmpfs, devtmpfs, squashfs)
+  df -hT -P -x overlay -x tmpfs -x devtmpfs -x squashfs || true
   echo
-  df -i -P || true
+  df -i -P -x overlay -x tmpfs -x devtmpfs -x squashfs || true
 
   section "CPU / Memory (current)"
   echo "-- loadavg --"
