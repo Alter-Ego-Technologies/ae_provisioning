@@ -14,7 +14,6 @@ echo "======================================================="
 echo "   Alter Ego Provisioning (AEP) - Server Bootstrap"
 echo "======================================================="
 
-
 echo "==> Updating system"
 apt update -y && apt upgrade -y
 
@@ -39,8 +38,6 @@ apt purge -y lxd-installer 2>/dev/null || true
 rm -rf /snap /var/snap /var/lib/snapd /var/cache/snapd 2>/dev/null || true
 
 echo "==> Snap removed and blocked successfully"
-
-
 
 # ---------------------------------------------------------
 # INSTALL PIPX + LINODE CLI
@@ -78,7 +75,7 @@ else
 fi
 
 echo "==> Enabling passwordless sudo"
-usermod -aG sudo "$ADMIN_USER"
+usermod -aG sudo,adm,systemd-journal "$ADMIN_USER"
 echo "$ADMIN_USER ALL=(ALL) NOPASSWD:ALL" > /etc/sudoers.d/90-$ADMIN_USER
 chmod 440 /etc/sudoers.d/90-$ADMIN_USER
 
@@ -121,19 +118,14 @@ sshd -t
 systemctl restart ssh
 echo "==> SSH hardened and restarted"
 
-
-
 # ---------------------------------------------------------
 # FIREWALL SETUP
 # ---------------------------------------------------------
 echo "==> Configuring UFW firewall"
-
 ufw default deny incoming
 ufw default allow outgoing
 ufw allow "$SSH_PORT"/tcp
 ufw --force enable
-
-
 
 # ---------------------------------------------------------
 # INSTALL MSMTP CONFIG
@@ -153,6 +145,9 @@ echo "==> Installing ops-monitor (threshold alerts + weekly summary)"
 mkdir -p /etc/ops-monitor/roles
 mkdir -p /var/lib/ops-monitor
 mkdir -p /usr/local/sbin
+mkdir -p /opt/ae_provisioning
+
+chown -R gabe:gabe /opt/ae_provisioning || true
 
 # Install ops-monitor scripts
 install -m 0644 "$REPO_PATH/scripts/ops-monitor/bin/ops-monitor-lib.sh" /usr/local/sbin/ops-monitor-lib.sh
@@ -173,8 +168,78 @@ fi
 # Install role overlays (safe to overwrite from repo templates)
 install -m 0644 "$REPO_PATH/config/ops-monitor/roles/"*.conf /etc/ops-monitor/roles/ 2>/dev/null || true
 
-# Set role (you should define SERVER_ROLE earlier; default base)
 SERVER_ROLE="${SERVER_ROLE:-base}"
+
+provision_mail() {
+  echo "==> Running MAIL role provisioning"
+
+  # ---------------------------------------------------------
+  # Mail-specific packages
+  # ---------------------------------------------------------
+  apt-get update -y
+  apt-get install -y msmtp msmtp-mta ca-certificates docker.io docker-compose-plugin
+
+  # ---------------------------------------------------------
+  # msmtp configuration (Mailcow submission)
+  # ---------------------------------------------------------
+  install -m 600 "$REPO_PATH/config/msmtprc" /etc/msmtprc
+  chown root:root /etc/msmtprc
+
+  touch /var/log/msmtp.log
+  chown root:adm /var/log/msmtp.log
+  chmod 640 /var/log/msmtp.log
+
+  # ---------------------------------------------------------
+  # Mailcow / Docker maintenance scripts
+  # ---------------------------------------------------------
+  echo "==> Installing Mailcow maintenance scripts"
+
+  install -m 0755 "$REPO_PATH/scripts/mail/domain-warmup.sh" \
+    /usr/local/bin/domain-warmup.sh
+
+  install -m 0755 "$REPO_PATH/scripts/mail/mailcow-health-email.sh" \
+    /usr/local/bin/mailcow-health-email.sh
+
+  install -m 0755 "$REPO_PATH/scripts/mail/docker-clean.sh" \
+    /usr/local/bin/docker-clean.sh
+
+  install -m 0755 "$REPO_PATH/scripts/mail/mailcow-year-archive.sh" \
+    /usr/local/bin/mailcow-year-archive.sh
+
+  # ---------------------------------------------------------
+  # Mail maintenance cron (managed file, not crontab -e)
+  # ---------------------------------------------------------
+  echo "==> Installing Mail maintenance cron"
+
+  cat > /etc/cron.d/mail-maint <<'EOF'
+SHELL=/bin/bash
+PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+
+0 */2 * * * root /usr/local/bin/domain-warmup.sh >> /var/log/domain-warmup.log 2>&1
+0 6 * * 1 root /usr/local/bin/mailcow-health-email.sh >> /var/log/mailcow-health-email.log 2>&1
+0 3 * * * root /usr/local/bin/docker-clean.sh >> /var/log/docker-clean.log 2>&1
+0 4 * * 0 root /usr/bin/docker system prune -af >/dev/null 2>&1
+0 5 * * 0 root /usr/bin/docker volume prune -f >/dev/null 2>&1
+0 3 * * * root /usr/local/bin/mailcow-year-archive.sh >> /var/log/mailcow-year-archive.log 2>&1
+EOF
+
+  chmod 0644 /etc/cron.d/mail-maint
+
+  # ---------------------------------------------------------
+  # Remove legacy monitoring cron (replaced by systemd)
+  # ---------------------------------------------------------
+  if crontab -l 2>/dev/null | grep -q 'server_health_check'; then
+    crontab -l | grep -v 'server_health_check' | crontab -
+  fi
+
+  if crontab -l 2>/dev/null | grep -q 'mail_server_health_check'; then
+    crontab -l | grep -v 'mail_server_health_check' | crontab -
+  fi
+
+  echo "==> MAIL role provisioning complete"
+}
+
+
 echo "$SERVER_ROLE" > /etc/ops-monitor/role
 chmod 0644 /etc/ops-monitor/role
 
@@ -198,6 +263,8 @@ echo "==> ops-monitor installed (role=${SERVER_ROLE})"
 #  - ops-threshold-check.timer (every 5 minutes)
 #  - ops-weekly-summary.timer (weekly)
 # Cron is intentionally NOT used.
+rm -f /etc/cron.d/server_health_check || true
+
 # ---------------------------------------------------------
 # OUTPUT PRIVATE SSH KEY
 # ---------------------------------------------------------
@@ -211,6 +278,9 @@ echo
 echo "SAVE THIS KEY NOW — YOU WILL NOT SEE IT AGAIN"
 echo "======================================================="
 
+if [[ "$SERVER_ROLE" == "mail" ]]; then
+  provision_mail
+fi
 
 echo "==> Provisioning complete!"
 echo "User: $USERNAME"
