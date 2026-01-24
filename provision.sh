@@ -10,37 +10,51 @@ ADMIN_USER="${ADMIN_USER:-gabe}"
 SSH_PORT="${SSH_PORT:-2222}"
 LOG_FILE="${LOG_FILE:-/var/log/provision.log}"
 
-echo "==> Using REPO_PATH=${REPO_PATH}"
-echo "==> Logging to ${LOG_FILE}"
+# Colors and emoji helpers (disable with NO_COLOR=1 or when not a TTY)
+if [[ -t 1 && -z "${NO_COLOR:-}" ]]; then
+  CYAN="\033[1;36m"; GREEN="\033[1;32m"; YELLOW="\033[1;33m"; RED="\033[1;31m"; BOLD="\033[1m"; RESET="\033[0m"
+else
+  CYAN=""; GREEN=""; YELLOW=""; RED=""; BOLD=""; RESET=""
+fi
+
+step()   { printf "%b\n" "${CYAN}➡️  $*${RESET}"; }
+ok()     { printf "%b\n" "${GREEN}✅ $*${RESET}"; }
+warn()   { printf "%b\n" "${YELLOW}⚠️  $*${RESET}"; }
+err()    { printf "%b\n" "${RED}⛔ $*${RESET}"; }
+banner() { printf "%b\n" "${BOLD}$*${RESET}"; }
+rule()   { printf "%b\n" "${BOLD}=======================================================${RESET}"; }
+
+step "Using REPO_PATH=${REPO_PATH}"
+step "Logging to ${LOG_FILE}"
 
 # Redirect output to both console and log file
 exec > >(tee -a "${LOG_FILE}")
 exec 2>&1
 
 # Validate required config files exist
-echo "==> Validating required files"
+step "Validating required files"
 for required_file in "$REPO_PATH/config/msmtprc" "$REPO_PATH/config/ops-monitor/ops.conf"; do
   if [[ ! -f "$required_file" ]]; then
-    echo "ERROR: Required file not found: $required_file"
+    err "Required file not found: $required_file"
     exit 1
   fi
 done
-echo "   -> All required files present"
+ok "All required files present"
 
-echo "======================================================="
-echo "   Alter Ego Provisioning (AEP) - Server Bootstrap"
-echo "======================================================="
-echo "Admin user: ${ADMIN_USER}"
-echo "SSH port: ${SSH_PORT}"
-echo "======================================================="
+rule
+banner "Alter Ego Provisioning (AEP) - Server Bootstrap"
+rule
+banner "Admin user: ${ADMIN_USER}"
+banner "SSH port: ${SSH_PORT}"
+rule
 
-echo "==> Updating system"
+step "Updating system"
 apt update -y && apt upgrade -y
 
 # ---------------------------------------------------------
 # REMOVE SNAP + BLOCK FUTURE AUTO-INSTALLS
 # ---------------------------------------------------------
-echo "==> Removing snapd and preventing snap auto-installs"
+step "Removing snapd and preventing snap auto-installs"
 
 # Stop snap services if present
 systemctl stop snapd 2>/dev/null || true
@@ -57,12 +71,12 @@ apt purge -y lxd-installer 2>/dev/null || true
 # Clean leftover snap directories
 rm -rf /snap /var/snap /var/lib/snapd /var/cache/snapd 2>/dev/null || true
 
-echo "==> Snap removed and blocked successfully"
+ok "Snap removed and blocked successfully"
 
 # ---------------------------------------------------------
 # INSTALL PIPX + LINODE CLI
 # ---------------------------------------------------------
-echo "==> Installing pipx + Linode CLI"
+step "Installing pipx + Linode CLI"
 
 apt install -y pipx
 pipx ensurepath
@@ -76,36 +90,36 @@ export PATH="/root/.local/bin:$PATH"
 
 pipx install --force linode-cli
 
-echo "==> Verifying Linode CLI installation"
+step "Verifying Linode CLI installation"
 which linode-cli || echo "ERROR: linode-cli not found in PATH"
 linode-cli --version || echo "ERROR: linode-cli failed to execute"
 
-echo "==> Linode CLI installed successfully"
+ok "Linode CLI installed successfully"
 
 # ---------------------------------------------------------
 # CREATE USER & SSH SETUP
 # ---------------------------------------------------------
 if id -u "$ADMIN_USER" >/dev/null 2>&1; then
-  echo "==> User '$ADMIN_USER' already exists, skipping creation"
+  ok "User '$ADMIN_USER' already exists, skipping creation"
 else
-  echo "==> Creating user '$ADMIN_USER'"
+  step "Creating user '$ADMIN_USER'"
   useradd -m -s /bin/bash "$ADMIN_USER"
 fi
 
-echo "==> Enabling passwordless sudo"
+step "Enabling passwordless sudo"
 usermod -aG sudo,adm,systemd-journal "$ADMIN_USER"
 echo "$ADMIN_USER ALL=(ALL) NOPASSWD:ALL" > /etc/sudoers.d/90-$ADMIN_USER
 chmod 440 /etc/sudoers.d/90-$ADMIN_USER
 
 
-echo "==> Preparing SSH directory and keys for user"
+step "Preparing SSH directory and keys for user"
 mkdir -p /home/$ADMIN_USER/.ssh
 chmod 700 /home/$ADMIN_USER/.ssh
 
 if [ ! -f "/home/$ADMIN_USER/.ssh/id_ed25519" ]; then
-    echo "==> Generating SSH keypair"
+    step "Generating SSH keypair"
     ssh-keygen -t ed25519 -f /home/$ADMIN_USER/.ssh/id_ed25519 -N "" -C "$ADMIN_USER@$(hostname)"
-    echo "   -> Verifying key"
+    ok "Verifying key"
     ssh-keygen -l -f /home/$ADMIN_USER/.ssh/id_ed25519
 fi
 
@@ -116,7 +130,7 @@ chown -R $ADMIN_USER:$ADMIN_USER /home/$ADMIN_USER/.ssh
 # ---------------------------------------------------------
 # SSH HARDENING
 # ---------------------------------------------------------
-echo "==> Hardening SSH"
+step "Hardening SSH"
 
 mkdir -p /run/sshd
 chmod 755 /run/sshd
@@ -132,16 +146,16 @@ sed -i 's/PermitRootLogin yes/PermitRootLogin no/' /etc/ssh/sshd_config || true
 
 sed -i 's/#PubkeyAuthentication yes/PubkeyAuthentication yes/' /etc/ssh/sshd_config || true
 
-echo "==> Validating SSH config"
+step "Validating SSH config"
 sshd -t
 
 systemctl restart ssh
-echo "==> SSH hardened and restarted"
+ok "SSH hardened and restarted"
 
 # ---------------------------------------------------------
 # FIREWALL SETUP
 # ---------------------------------------------------------
-echo "==> Configuring UFW firewall"
+step "Configuring UFW firewall"
 ufw default deny incoming
 ufw default allow outgoing
 ufw allow "$SSH_PORT"/tcp
@@ -150,7 +164,7 @@ ufw --force enable
 # ---------------------------------------------------------
 # INSTALL MSMTP (base packages + config)
 # ---------------------------------------------------------
-echo "==> Installing msmtp packages and config"
+step "Installing msmtp packages and config"
 
 apt install -y msmtp msmtp-mta ca-certificates
 install -m 600 "$REPO_PATH/config/msmtprc" /etc/msmtprc
@@ -162,7 +176,7 @@ chmod 640 /var/log/msmtp.log
 # ---------------------------------------------------------
 # INSTALL OPS MONITOR (alerts + weekly summary)
 # ---------------------------------------------------------
-echo "==> Installing ops-monitor (threshold alerts + weekly summary)"
+step "Installing ops-monitor (threshold alerts + weekly summary)"
 
 # Ensure dirs exist
 mkdir -p /etc/ops-monitor/roles
@@ -183,9 +197,9 @@ install -m 0755 "$REPO_PATH/scripts/mail/server_health_check.sh" /usr/local/sbin
 # Install ops-monitor config (only if missing; do not clobber real settings)
 if [[ ! -f /etc/ops-monitor/ops.conf ]]; then
   install -m 0644 "$REPO_PATH/config/ops-monitor/ops.conf" /etc/ops-monitor/ops.conf
-  echo "   -> Created /etc/ops-monitor/ops.conf (edit OPS_TO/OPS_FROM)"
+  ok "Created /etc/ops-monitor/ops.conf (edit OPS_TO/OPS_FROM)"
 else
-  echo "   -> Keeping existing /etc/ops-monitor/ops.conf"
+  warn "Keeping existing /etc/ops-monitor/ops.conf"
 fi
 
 # Install role overlays (safe to overwrite from repo templates)
@@ -197,7 +211,7 @@ echo "$SERVER_ROLE" > /etc/ops-monitor/role
 chmod 0644 /etc/ops-monitor/role
 
 provision_mail() {
-  echo "==> Running MAIL role provisioning"
+  step "Running MAIL role provisioning"
 
   # ---------------------------------------------------------
   # Mail-specific packages (msmtp already installed in base)
@@ -209,7 +223,7 @@ provision_mail() {
   # ---------------------------------------------------------
   # Mailcow / Docker maintenance scripts
   # ---------------------------------------------------------
-  echo "==> Installing Mailcow maintenance scripts"
+  step "Installing Mailcow maintenance scripts"
 
   install -m 0755 "$REPO_PATH/scripts/mail/mailcow-health-email.sh" \
     /usr/local/bin/mailcow-health-email.sh
@@ -226,7 +240,7 @@ provision_mail() {
   # ---------------------------------------------------------
   # Mail maintenance cron (managed file, not crontab -e)
   # ---------------------------------------------------------
-  echo "==> Installing Mail maintenance cron"
+  step "Installing Mail maintenance cron"
 
   cat > /etc/cron.d/mail-maint <<'EOF'
 SHELL=/bin/bash
@@ -243,7 +257,7 @@ EOF
 
   chmod 0644 /etc/cron.d/mail-maint
 
-echo "==> Removing legacy Mailcow cron jobs from root crontab"
+step "Removing legacy Mailcow cron jobs from root crontab"
 
 if crontab -l 2>/dev/null | grep -E -q 'domain-warmup\.sh|mailcow-health-email\.sh|docker-clean\.sh|mailcow-year-archive\.sh|acme-mailcow|prune'; then
   crontab -l | grep -Ev \
@@ -263,13 +277,13 @@ fi
     crontab -l | grep -v 'mail_server_health_check' | crontab -
   fi
 
-  echo "==> MAIL role provisioning complete"
+  ok "MAIL role provisioning complete"
 }
 
 # ---------------------------------------------------------
 # INSTALL SYSTEMD UNITS
 # ---------------------------------------------------------
-echo "==> Installing systemd timer units"
+step "Installing systemd timer units"
 install -m 0644 "$REPO_PATH/scripts/ops-monitor/systemd/ops-threshold-check.service" /etc/systemd/system/ops-threshold-check.service
 install -m 0644 "$REPO_PATH/scripts/ops-monitor/systemd/ops-threshold-check.timer"   /etc/systemd/system/ops-threshold-check.timer
 install -m 0644 "$REPO_PATH/scripts/ops-monitor/systemd/ops-weekly-summary.service" /etc/systemd/system/ops-weekly-summary.service
@@ -279,7 +293,7 @@ install -m 0644 "$REPO_PATH/scripts/ops-monitor/systemd/ops-weekly-summary.timer
 systemctl daemon-reload
 systemctl enable --now ops-threshold-check.timer ops-weekly-summary.timer
 
-echo "==> ops-monitor installed (role=${SERVER_ROLE})"
+ok "ops-monitor installed (role=${SERVER_ROLE})"
 
 
 # ---------------------------------------------------------
@@ -295,9 +309,9 @@ rm -f /etc/cron.d/server_health_check || true
 # OUTPUT PRIVATE SSH KEY
 # ---------------------------------------------------------
 
-echo "======================================================="
-echo "              SSH PRIVATE KEY FOR $ADMIN_USER"
-echo "======================================================="
+rule
+banner "🔐 SSH PRIVATE KEY FOR $ADMIN_USER"
+rule
 echo
 cat /home/$ADMIN_USER/.ssh/id_ed25519
 echo
@@ -308,12 +322,12 @@ if [[ "$SERVER_ROLE" == "mail" ]]; then
   provision_mail
 fi
 
-echo "======================================================="
-echo "==> Provisioning complete!"
-echo "User: $ADMIN_USER"
-echo "SSH Port: $SSH_PORT"
-echo "Monitoring: ops-monitor (role=${SERVER_ROLE})"
-echo "Linode CLI: pipx-installed"
-echo "Snap: REMOVED & BLOCKED"
-echo "Log file: ${LOG_FILE}"
-echo "======================================================="
+rule
+ok "Provisioning complete!"
+banner "User: $ADMIN_USER"
+banner "SSH Port: $SSH_PORT"
+banner "Monitoring: ops-monitor (role=${SERVER_ROLE})"
+banner "Linode CLI: pipx-installed"
+banner "Snap: REMOVED & BLOCKED"
+banner "Log file: ${LOG_FILE}"
+rule
