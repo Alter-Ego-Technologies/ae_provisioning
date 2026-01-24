@@ -18,8 +18,6 @@ echo "======================================================="
 echo "==> Updating system"
 apt update -y && apt upgrade -y
 
-
-
 # ---------------------------------------------------------
 # REMOVE SNAP + BLOCK FUTURE AUTO-INSTALLS
 # ---------------------------------------------------------
@@ -193,24 +191,17 @@ systemctl enable --now ops-threshold-check.timer ops-weekly-summary.timer
 echo "==> ops-monitor installed (role=${SERVER_ROLE})"
 
 
-
 # ---------------------------------------------------------
-# CRON JOBS
+# MONITORING SCHEDULING
 # ---------------------------------------------------------
-echo "==> Installing cron jobs for monitoring"
-
-cat > /etc/cron.d/server_health_check << 'EOF'
-*/5 * * * * root /usr/local/bin/server_health_check.sh
-0 9 * * SUN root /usr/local/bin/server_health_check.sh summary
-EOF
-
-chmod 644 /etc/cron.d/server_health_check
-
-
-
+# Monitoring is handled via systemd timers:
+#  - ops-threshold-check.timer (every 5 minutes)
+#  - ops-weekly-summary.timer (weekly)
+# Cron is intentionally NOT used.
 # ---------------------------------------------------------
 # OUTPUT PRIVATE SSH KEY
 # ---------------------------------------------------------
+
 echo "======================================================="
 echo "              SSH PRIVATE KEY FOR $USERNAME"
 echo "======================================================="
@@ -224,7 +215,7 @@ echo "======================================================="
 echo "==> Provisioning complete!"
 echo "User: $USERNAME"
 echo "SSH Port: $SSH_PORT"
-echo "Monitoring: server_health_check.sh + cron"
+echo "Monitoring: server_health_check.sh + systemd timers"
 echo "Linode CLI: pipx-installed"
 echo "Snap: REMOVED & BLOCKED"
 echo "======================================================="
