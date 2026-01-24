@@ -15,33 +15,55 @@ section() {
   echo "==== $* ===="
 }
 
-legacy_health_check() {
-  section "Legacy server_health_check"
-  if command -v server_health_check >/dev/null 2>&1; then
-    server_health_check || true
-  else
-    echo "server_health_check not installed"
-  fi
-}
+# #legacy_health_check() {
+#   section "Legacy server_health_check"
+#   if command -v server_health_check >/dev/null 2>&1; then
+#     server_health_check || true
+#   else
+#     echo "server_health_check not installed"
+#   fi
+# }
 
 mail_section() {
   [[ "${ROLE:-base}" != "mail" ]] && return 0
 
-  section "Mail (Postfix/Dovecot)"
-  if command -v postqueue >/dev/null 2>&1; then
+  MAILCOW_ROOT="/opt/mailcow-dockerized"
+  COMPOSE="/usr/bin/docker compose -f ${MAILCOW_ROOT}/docker-compose.yml"
+
+  if [[ -d "$MAILCOW_ROOT" && -x /usr/bin/docker ]]; then
+    section "Mail (Mailcow)"
+
     echo "-- Postfix queue (tail) --"
-    postqueue -p 2>/dev/null | tail -n 40 || true
+    ${COMPOSE} exec postfix-mailcow postqueue -p 2>/dev/null | tail -n 40 || true
+
+    echo
+    echo "-- Postfix warnings/errors (7d, tail) --"
+    ${COMPOSE} logs --since "7d" --tail 250 postfix-mailcow 2>/dev/null | grep -Ei "warning|error|fatal|reject" || true
+
+    echo
+    echo "-- Dovecot warnings/errors (7d, tail) --"
+    ${COMPOSE} logs --since "7d" --tail 250 dovecot-mailcow 2>/dev/null | grep -Ei "warning|error|fatal|auth" || true
+
+    echo
+    echo "-- Acme (last 50 lines) --"
+    ${COMPOSE} logs --tail 50 acme-mailcow 2>/dev/null || true
   else
-    echo "postqueue not found"
+    section "Mail (Postfix/Dovecot)"
+    if command -v postqueue >/dev/null 2>&1; then
+      echo "-- Postfix queue (tail) --"
+      postqueue -p 2>/dev/null | tail -n 40 || true
+    else
+      echo "postqueue not found"
+    fi
+
+    echo
+    echo "-- Postfix warnings/errors (7d, tail) --"
+    journalctl -u postfix --since "7 days ago" -p warning..alert --no-pager 2>/dev/null | tail -n 250 || true
+
+    echo
+    echo "-- Dovecot warnings/errors (7d, tail) --"
+    journalctl -u dovecot --since "7 days ago" -p warning..alert --no-pager 2>/dev/null | tail -n 250 || true
   fi
-
-  echo
-  echo "-- Postfix warnings/errors (7d, tail) --"
-  journalctl -u postfix --since "7 days ago" -p warning..alert --no-pager 2>/dev/null | tail -n 250 || true
-
-  echo
-  echo "-- Dovecot warnings/errors (7d, tail) --"
-  journalctl -u dovecot --since "7 days ago" -p warning..alert --no-pager 2>/dev/null | tail -n 250 || true
 }
 
 body="$(
