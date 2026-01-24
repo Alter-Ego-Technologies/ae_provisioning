@@ -37,6 +37,8 @@ echo "======================================================="
 echo "==> Updating system"
 apt update -y && apt upgrade -y
 
+apt-get remove -y docker-compose docker.io containerd runc || true
+
 # ---------------------------------------------------------
 # REMOVE SNAP + BLOCK FUTURE AUTO-INSTALLS
 # ---------------------------------------------------------
