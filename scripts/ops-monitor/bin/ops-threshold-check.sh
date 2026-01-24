@@ -214,14 +214,39 @@ mail_check() {
   emit_change "mail_deferred" "$status_d" "Postfix deferred=${deferred} (warn>=${dw}, crit>=${dc})"
 }
 
+container_check() {
+  [[ "${ROLE:-base}" != "mail" ]] && return 0
+  command -v docker >/dev/null 2>&1 || return 0
+  
+  local MAILCOW_ROOT="/opt/mailcow-dockerized"
+  [[ ! -d "$MAILCOW_ROOT" ]] && return 0
+  
+  local container status_overall="OK"
+  # Check key Mailcow containers
+  for container in postfix-mailcow dovecot-mailcow nginx-mailcow mysql-mailcow redis-mailcow; do
+    local state
+    state="$(docker ps -a --filter name="$container" --format '{{.State}}' 2>/dev/null || echo "none")"
+    
+    local status="OK"
+    if [[ "$state" != "running" ]]; then
+      status="CRIT"
+      if [[ "$status_overall" != "CRIT" ]]; then status_overall="CRIT"; fi
+    fi
+    emit_change "container_$container" "$status" "Container $container is $state"
+  done
+}
+
 disk_check
 mem_check
 load_check
 cpu_check
-services_check
+if [[ "${ROLE:-base}" != "mail" ]]; then
+  services_check
+fi
 cert_check
 backup_check
 mail_check
+container_check
 
 if (( changed_any == 1 )); then
   max="OK"
@@ -230,16 +255,21 @@ if (( changed_any == 1 )); then
     if (( $(status_rank "$sev") > $(status_rank "$max") )); then max="$sev"; fi
   done
 
-  subject="ALERT [${max}] ${HOST} (${ROLE})"
+  # Choose emoji based on severity
+  local emoji="✅"
+  [[ "$max" == "WARN" ]] && emoji="⚠️"
+  [[ "$max" == "CRIT" ]] && emoji="🚨"
+  
+  subject="$emoji ALERT [${max}] ${HOST} (${ROLE})"
   body="$(cat <<EOF
-Host: ${HOST}
-Role: ${ROLE}
-Time: ${NOW_HUMAN}
+🖥️ Host: ${HOST}
+🧩 Role: ${ROLE}
+⏰ Time: ${NOW_HUMAN}
 
-Items:
-$(printf '%s\n' "${report_lines[@]}")
+📋 Items:
+$(printf '%s\n' "${report_lines[@]}" | sed 's/^/  /')
 
-State: ${STATE_DIR}/state.env
+📂 State: ${STATE_DIR}/state.env
 EOF
 )"
   send_email "$subject" "$body"
