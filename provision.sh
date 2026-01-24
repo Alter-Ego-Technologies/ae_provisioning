@@ -226,6 +226,15 @@ EOF
 
   chmod 0644 /etc/cron.d/mail-maint
 
+echo "==> Removing legacy Mailcow cron jobs from root crontab"
+
+if crontab -l 2>/dev/null | grep -E -q 'domain-warmup\.sh|mailcow-health-email\.sh|docker-clean\.sh|mailcow-year-archive\.sh|acme-mailcow'; then
+  crontab -l | grep -Ev \
+    'domain-warmup\.sh|mailcow-health-email\.sh|docker-clean\.sh|mailcow-year-archive\.sh|acme-mailcow' \
+    | crontab -
+fi
+
+
   # ---------------------------------------------------------
   # Remove legacy monitoring cron (replaced by systemd)
   # ---------------------------------------------------------
