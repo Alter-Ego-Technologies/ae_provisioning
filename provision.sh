@@ -37,8 +37,6 @@ echo "======================================================="
 echo "==> Updating system"
 apt update -y && apt upgrade -y
 
-apt-get remove -y docker-compose docker.io containerd runc || true
-
 # ---------------------------------------------------------
 # REMOVE SNAP + BLOCK FUTURE AUTO-INSTALLS
 # ---------------------------------------------------------
@@ -205,7 +203,8 @@ provision_mail() {
   # Mail-specific packages (msmtp already installed in base)
   # ---------------------------------------------------------
   apt-get update -y
-  apt-get install -y docker.io docker-compose-plugin
+  apt-get remove -y docker.io containerd runc docker-compose || true
+  apt-get install -y docker-ce docker-ce-cli containerd.io docker-compose-plugin
 
   # ---------------------------------------------------------
   # Mailcow / Docker maintenance scripts
