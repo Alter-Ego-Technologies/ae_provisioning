@@ -1,8 +1,17 @@
 #!/bin/bash
 set -e
 
-# Resolve repo root dynamically
-REPO_PATH="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# Resolve repo root robustly (works whether provision.sh is in repo root or inside AEP/)
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+# If the repo has an AEP/ subdir and this script is above it, use it
+if [[ -d "${SCRIPT_DIR}/AEP/scripts" ]]; then
+  REPO_PATH="${SCRIPT_DIR}/AEP"
+else
+  REPO_PATH="${SCRIPT_DIR}"
+fi
+
+echo "==> Using REPO_PATH=${REPO_PATH}"
 
 USERNAME="gabe"
 SSH_PORT="2222"
