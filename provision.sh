@@ -170,7 +170,7 @@ mkdir -p /var/lib/ops-monitor
 mkdir -p /usr/local/sbin
 mkdir -p /opt/ae_provisioning
 
-chown -R gabe:gabe /opt/ae_provisioning || true
+chown -R $ADMIN_USER:$ADMIN_USER /opt/ae_provisioning || true
 
 # Install ops-monitor scripts
 install -m 0644 "$REPO_PATH/scripts/ops-monitor/bin/ops-monitor-lib.sh" /usr/local/sbin/ops-monitor-lib.sh
@@ -178,7 +178,7 @@ install -m 0755 "$REPO_PATH/scripts/ops-monitor/bin/ops-threshold-check.sh" /usr
 install -m 0755 "$REPO_PATH/scripts/ops-monitor/bin/ops-weekly-summary.sh"  /usr/local/sbin/ops-weekly-summary
 
 # Install legacy health check as a uniform command (still included in weekly summary)
-install -m 0755 "$REPO_PATH/scripts/server_health_check.sh" /usr/local/sbin/server_health_check
+install -m 0755 "$REPO_PATH/scripts/mail/server_health_check.sh" /usr/local/sbin/server_health_check
 
 # Install ops-monitor config (only if missing; do not clobber real settings)
 if [[ ! -f /etc/ops-monitor/ops.conf ]]; then
@@ -311,7 +311,7 @@ fi
 echo "==> Provisioning complete!"
 echo "User: $ADMIN_USER"
 echo "SSH Port: $SSH_PORT"
-echo "Monitoring: server_health_check.sh + systemd timers"
+echo "Monitoring: ops-monitor (role=${SERVER_ROLE})"
 echo "Linode CLI: pipx-installed"
 echo "Snap: REMOVED & BLOCKED"
 echo "Log file: ${LOG_FILE}"
