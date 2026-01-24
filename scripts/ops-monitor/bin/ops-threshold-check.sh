@@ -215,15 +215,12 @@ mail_check() {
 }
 
 container_check() {
-  [[ "${ROLE:-base}" != "mail" ]] && return 0
+  [[ -z "${CONTAINERS:-}" ]] && return 0
   command -v docker >/dev/null 2>&1 || return 0
   
-  local MAILCOW_ROOT="/opt/mailcow-dockerized"
-  [[ ! -d "$MAILCOW_ROOT" ]] && return 0
-  
   local container status_overall="OK"
-  # Check key Mailcow containers
-  for container in postfix-mailcow dovecot-mailcow nginx-mailcow mysql-mailcow redis-mailcow; do
+  # Check containers defined in config
+  for container in ${CONTAINERS}; do
     local state
     state="$(docker ps -a --filter name="$container" --format '{{.State}}' 2>/dev/null || echo "none")"
     
