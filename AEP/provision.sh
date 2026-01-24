@@ -141,17 +141,51 @@ install -m 600 "$REPO_PATH/config/msmtprc" /etc/msmtprc
 touch /var/log/msmtp.log
 chmod 640 /var/log/msmtp.log || true
 
-
-
 # ---------------------------------------------------------
-# INSTALL SERVER MONITORING SCRIPT
+# INSTALL OPS MONITOR (alerts + weekly summary)
 # ---------------------------------------------------------
-echo "==> Installing server_health_check.sh"
+echo "==> Installing ops-monitor (threshold alerts + weekly summary)"
 
-install -m 755 "$REPO_PATH/scripts/server_health_check.sh" /usr/local/bin/server_health_check.sh
+# Ensure dirs exist
+mkdir -p /etc/ops-monitor/roles
+mkdir -p /var/lib/ops-monitor
+mkdir -p /usr/local/sbin
 
-touch /var/log/server_health.log
-chmod 644 /var/log/server_health.log
+# Install ops-monitor scripts
+install -m 0644 "$REPO_PATH/scripts/ops-monitor/bin/ops-monitor-lib.sh" /usr/local/sbin/ops-monitor-lib.sh
+install -m 0755 "$REPO_PATH/scripts/ops-monitor/bin/ops-threshold-check.sh" /usr/local/sbin/ops-threshold-check
+install -m 0755 "$REPO_PATH/scripts/ops-monitor/bin/ops-weekly-summary.sh"  /usr/local/sbin/ops-weekly-summary
+
+# Install legacy health check as a uniform command (still included in weekly summary)
+install -m 0755 "$REPO_PATH/scripts/server_health_check.sh" /usr/local/sbin/server_health_check
+
+# Install ops-monitor config (only if missing; do not clobber real settings)
+if [[ ! -f /etc/ops-monitor/ops.conf ]]; then
+  install -m 0644 "$REPO_PATH/config/ops-monitor/ops.conf" /etc/ops-monitor/ops.conf
+  echo "   -> Created /etc/ops-monitor/ops.conf (edit OPS_TO/OPS_FROM)"
+else
+  echo "   -> Keeping existing /etc/ops-monitor/ops.conf"
+fi
+
+# Install role overlays (safe to overwrite from repo templates)
+install -m 0644 "$REPO_PATH/config/ops-monitor/roles/"*.conf /etc/ops-monitor/roles/ 2>/dev/null || true
+
+# Set role (you should define SERVER_ROLE earlier; default base)
+SERVER_ROLE="${SERVER_ROLE:-base}"
+echo "$SERVER_ROLE" > /etc/ops-monitor/role
+chmod 0644 /etc/ops-monitor/role
+
+# Install systemd units
+install -m 0644 "$REPO_PATH/scripts/ops-monitor/systemd/ops-threshold-check.service" /etc/systemd/system/ops-threshold-check.service
+install -m 0644 "$REPO_PATH/scripts/ops-monitor/systemd/ops-threshold-check.timer"   /etc/systemd/system/ops-threshold-check.timer
+install -m 0644 "$REPO_PATH/scripts/ops-monitor/systemd/ops-weekly-summary.service" /etc/systemd/system/ops-weekly-summary.service
+install -m 0644 "$REPO_PATH/scripts/ops-monitor/systemd/ops-weekly-summary.timer"   /etc/systemd/system/ops-weekly-summary.timer
+
+# Enable timers
+systemctl daemon-reload
+systemctl enable --now ops-threshold-check.timer ops-weekly-summary.timer
+
+echo "==> ops-monitor installed (role=${SERVER_ROLE})"
 
 
 
