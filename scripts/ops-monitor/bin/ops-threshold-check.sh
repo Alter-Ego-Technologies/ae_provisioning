@@ -254,8 +254,8 @@ if (( changed_any == 1 )); then
     if (( $(status_rank "$sev") > $(status_rank "$max") )); then max="$sev"; fi
   done
 
-  # Choose emoji based on severity
-  local emoji="✅"
+  # Choose emoji based on severity (not a function scope, keep non-local)
+  emoji="✅"
   [[ "$max" == "WARN" ]] && emoji="⚠️"
   [[ "$max" == "CRIT" ]] && emoji="🚨"
   
