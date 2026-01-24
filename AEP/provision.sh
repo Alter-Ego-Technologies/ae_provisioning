@@ -76,32 +76,33 @@ echo "==> Linode CLI installed successfully"
 # ---------------------------------------------------------
 # CREATE USER & SSH SETUP
 # ---------------------------------------------------------
-echo "==> Creating privileged user: $USERNAME"
+ADMIN_USER="gabe"
 
-if ! id "$USERNAME" &>/dev/null; then
-    adduser --disabled-password --gecos "" "$USERNAME"
+if id -u "$ADMIN_USER" >/dev/null 2>&1; then
+  echo "==> User '$ADMIN_USER' already exists, skipping creation"
+else
+  echo "==> Creating user '$ADMIN_USER'"
+  useradd -m -s /bin/bash "$ADMIN_USER"
 fi
 
 echo "==> Enabling passwordless sudo"
-usermod -aG sudo "$USERNAME"
-echo "$USERNAME ALL=(ALL) NOPASSWD:ALL" > /etc/sudoers.d/90-$USERNAME
-chmod 440 /etc/sudoers.d/90-$USERNAME
+usermod -aG sudo "$ADMIN_USER"
+echo "$ADMIN_USER ALL=(ALL) NOPASSWD:ALL" > /etc/sudoers.d/90-$ADMIN_USER
+chmod 440 /etc/sudoers.d/90-$ADMIN_USER
 
 
 echo "==> Preparing SSH directory and keys for user"
-mkdir -p /home/$USERNAME/.ssh
-chmod 700 /home/$USERNAME/.ssh
+mkdir -p /home/$ADMIN_USER/.ssh
+chmod 700 /home/$ADMIN_USER/.ssh
 
-if [ ! -f "/home/$USERNAME/.ssh/id_ed25519" ]; then
+if [ ! -f "/home/$ADMIN_USER/.ssh/id_ed25519" ]; then
     echo "==> Generating SSH keypair"
-    ssh-keygen -t ed25519 -f /home/$USERNAME/.ssh/id_ed25519 -N "" -C "$USERNAME@$(hostname)"
+    ssh-keygen -t ed25519 -f /home/$ADMIN_USER/.ssh/id_ed25519 -N "" -C "$ADMIN_USER@$(hostname)"
 fi
 
-cat /home/$USERNAME/.ssh/id_ed25519.pub > /home/$USERNAME/.ssh/authorized_keys
-chmod 600 /home/$USERNAME/.ssh/authorized_keys
-chown -R $USERNAME:$USERNAME /home/$USERNAME/.ssh
-
-
+cat /home/$ADMIN_USER/.ssh/id_ed25519.pub > /home/$ADMIN_USER/.ssh/authorized_keys
+chmod 600 /home/$ADMIN_USER/.ssh/authorized_keys
+chown -R $ADMIN_USER:$ADMIN_USER /home/$ADMIN_USER/.ssh
 
 # ---------------------------------------------------------
 # SSH HARDENING
