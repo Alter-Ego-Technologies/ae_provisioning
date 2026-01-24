@@ -5,13 +5,33 @@ set -e
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_PATH="${SCRIPT_DIR}"
 
-echo "==> Using REPO_PATH=${REPO_PATH}"
+# Configuration from environment or defaults
+ADMIN_USER="${ADMIN_USER:-gabe}"
+SSH_PORT="${SSH_PORT:-2222}"
+LOG_FILE="${LOG_FILE:-/var/log/provision.log}"
 
-USERNAME="gabe"
-SSH_PORT="2222"
+echo "==> Using REPO_PATH=${REPO_PATH}"
+echo "==> Logging to ${LOG_FILE}"
+
+# Redirect output to both console and log file
+exec > >(tee -a "${LOG_FILE}")
+exec 2>&1
+
+# Validate required config files exist
+echo "==> Validating required files"
+for required_file in "$REPO_PATH/config/msmtprc" "$REPO_PATH/config/ops-monitor/ops.conf"; do
+  if [[ ! -f "$required_file" ]]; then
+    echo "ERROR: Required file not found: $required_file"
+    exit 1
+  fi
+done
+echo "   -> All required files present"
 
 echo "======================================================="
 echo "   Alter Ego Provisioning (AEP) - Server Bootstrap"
+echo "======================================================="
+echo "Admin user: ${ADMIN_USER}"
+echo "SSH port: ${SSH_PORT}"
 echo "======================================================="
 
 echo "==> Updating system"
@@ -65,8 +85,6 @@ echo "==> Linode CLI installed successfully"
 # ---------------------------------------------------------
 # CREATE USER & SSH SETUP
 # ---------------------------------------------------------
-ADMIN_USER="gabe"
-
 if id -u "$ADMIN_USER" >/dev/null 2>&1; then
   echo "==> User '$ADMIN_USER' already exists, skipping creation"
 else
@@ -87,6 +105,8 @@ chmod 700 /home/$ADMIN_USER/.ssh
 if [ ! -f "/home/$ADMIN_USER/.ssh/id_ed25519" ]; then
     echo "==> Generating SSH keypair"
     ssh-keygen -t ed25519 -f /home/$ADMIN_USER/.ssh/id_ed25519 -N "" -C "$ADMIN_USER@$(hostname)"
+    echo "   -> Verifying key"
+    ssh-keygen -l -f /home/$ADMIN_USER/.ssh/id_ed25519
 fi
 
 cat /home/$ADMIN_USER/.ssh/id_ed25519.pub > /home/$ADMIN_USER/.ssh/authorized_keys
@@ -128,13 +148,16 @@ ufw allow "$SSH_PORT"/tcp
 ufw --force enable
 
 # ---------------------------------------------------------
-# INSTALL MSMTP CONFIG
+# INSTALL MSMTP (base packages + config)
 # ---------------------------------------------------------
-echo "==> Installing msmtp config"
+echo "==> Installing msmtp packages and config"
 
+apt install -y msmtp msmtp-mta ca-certificates
 install -m 600 "$REPO_PATH/config/msmtprc" /etc/msmtprc
+chown root:root /etc/msmtprc
 touch /var/log/msmtp.log
-chmod 640 /var/log/msmtp.log || true
+chown root:adm /var/log/msmtp.log
+chmod 640 /var/log/msmtp.log
 
 # ---------------------------------------------------------
 # INSTALL OPS MONITOR (alerts + weekly summary)
@@ -168,26 +191,19 @@ fi
 # Install role overlays (safe to overwrite from repo templates)
 install -m 0644 "$REPO_PATH/config/ops-monitor/roles/"*.conf /etc/ops-monitor/roles/ 2>/dev/null || true
 
+# Set server role (before installing systemd units)
 SERVER_ROLE="${SERVER_ROLE:-base}"
+echo "$SERVER_ROLE" > /etc/ops-monitor/role
+chmod 0644 /etc/ops-monitor/role
 
 provision_mail() {
   echo "==> Running MAIL role provisioning"
 
   # ---------------------------------------------------------
-  # Mail-specific packages
+  # Mail-specific packages (msmtp already installed in base)
   # ---------------------------------------------------------
   apt-get update -y
-  apt-get install -y msmtp msmtp-mta ca-certificates docker.io docker-compose-plugin
-
-  # ---------------------------------------------------------
-  # msmtp configuration (Mailcow submission)
-  # ---------------------------------------------------------
-  install -m 600 "$REPO_PATH/config/msmtprc" /etc/msmtprc
-  chown root:root /etc/msmtprc
-
-  touch /var/log/msmtp.log
-  chown root:adm /var/log/msmtp.log
-  chmod 640 /var/log/msmtp.log
+  apt-get install -y docker.io docker-compose-plugin
 
   # ---------------------------------------------------------
   # Mailcow / Docker maintenance scripts
@@ -249,11 +265,10 @@ fi
   echo "==> MAIL role provisioning complete"
 }
 
-
-echo "$SERVER_ROLE" > /etc/ops-monitor/role
-chmod 0644 /etc/ops-monitor/role
-
-# Install systemd units
+# ---------------------------------------------------------
+# INSTALL SYSTEMD UNITS
+# ---------------------------------------------------------
+echo "==> Installing systemd timer units"
 install -m 0644 "$REPO_PATH/scripts/ops-monitor/systemd/ops-threshold-check.service" /etc/systemd/system/ops-threshold-check.service
 install -m 0644 "$REPO_PATH/scripts/ops-monitor/systemd/ops-threshold-check.timer"   /etc/systemd/system/ops-threshold-check.timer
 install -m 0644 "$REPO_PATH/scripts/ops-monitor/systemd/ops-weekly-summary.service" /etc/systemd/system/ops-weekly-summary.service
@@ -280,10 +295,10 @@ rm -f /etc/cron.d/server_health_check || true
 # ---------------------------------------------------------
 
 echo "======================================================="
-echo "              SSH PRIVATE KEY FOR $USERNAME"
+echo "              SSH PRIVATE KEY FOR $ADMIN_USER"
 echo "======================================================="
 echo
-cat /home/$USERNAME/.ssh/id_ed25519
+cat /home/$ADMIN_USER/.ssh/id_ed25519
 echo
 echo "SAVE THIS KEY NOW — YOU WILL NOT SEE IT AGAIN"
 echo "======================================================="
@@ -293,9 +308,10 @@ if [[ "$SERVER_ROLE" == "mail" ]]; then
 fi
 
 echo "==> Provisioning complete!"
-echo "User: $USERNAME"
+echo "User: $ADMIN_USER"
 echo "SSH Port: $SSH_PORT"
 echo "Monitoring: server_health_check.sh + systemd timers"
 echo "Linode CLI: pipx-installed"
 echo "Snap: REMOVED & BLOCKED"
+echo "Log file: ${LOG_FILE}"
 echo "======================================================="
