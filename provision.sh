@@ -221,6 +221,7 @@ PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 0 4 * * 0 root /usr/bin/docker system prune -af >/dev/null 2>&1
 0 5 * * 0 root /usr/bin/docker volume prune -f >/dev/null 2>&1
 0 3 * * * root /usr/local/bin/mailcow-year-archive.sh >> /var/log/mailcow-year-archive.log 2>&1
+20 1 26 3 * root docker compose -f /opt/mailcow-dockerized/docker-compose.yml exec acme-mailcow acme-mailcow --force >> /var/log/acme-retry.log 2>&1
 EOF
 
   chmod 0644 /etc/cron.d/mail-maint
