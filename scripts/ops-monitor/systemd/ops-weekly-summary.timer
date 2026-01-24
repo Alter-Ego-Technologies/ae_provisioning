@@ -2,7 +2,7 @@
 Description=Send Ops Monitor Weekly Summary
 
 [Timer]
-OnCalendar=Sat *-*-* 02:35:00
+OnCalendar=Sat *-*-* 02:40:00
 Persistent=true
 
 [Install]
