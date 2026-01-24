@@ -222,7 +222,9 @@ container_check() {
   # Check containers defined in config
   for container in ${CONTAINERS}; do
     local state
-    state="$(docker ps -a --filter name="$container" --format '{{.State}}' 2>/dev/null || echo "none")"
+    # Prefer inspect for exact name; fall back to ps
+    state="$(docker inspect -f '{{.State.Status}}' "$container" 2>/dev/null || docker ps -a --filter name="^/${container}$" --format '{{.State}}' 2>/dev/null)"
+    [[ -z "$state" ]] && state="missing"
     
     local status="OK"
     if [[ "$state" != "running" ]]; then
