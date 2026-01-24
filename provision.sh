@@ -220,6 +220,9 @@ provision_mail() {
   install -m 0755 "$REPO_PATH/scripts/mail/mailcow-year-archive.sh" \
     /usr/local/bin/mailcow-year-archive.sh
 
+  install -m 0755 "$REPO_PATH/scripts/mail/domain-warmup.sh" \
+    /usr/local/bin/domain-warmup.sh
+
   # ---------------------------------------------------------
   # Mail maintenance cron (managed file, not crontab -e)
   # ---------------------------------------------------------
@@ -229,6 +232,7 @@ provision_mail() {
 SHELL=/bin/bash
 PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 
+0 */2 * * * root /usr/local/bin/domain-warmup.sh >> /var/log/domain-warmup.log 2>&1
 0 6 * * 1 root /usr/local/bin/mailcow-health-email.sh >> /var/log/mailcow-health-email.log 2>&1
 0 3 * * * root /usr/local/bin/docker-clean.sh >> /var/log/docker-clean.log 2>&1
 0 4 * * 0 root /usr/bin/docker system prune -af >/dev/null 2>&1
@@ -241,9 +245,9 @@ EOF
 
 echo "==> Removing legacy Mailcow cron jobs from root crontab"
 
-if crontab -l 2>/dev/null | grep -E -q 'mailcow-health-email\.sh|docker-clean\.sh|mailcow-year-archive\.sh|acme-mailcow'; then
+if crontab -l 2>/dev/null | grep -E -q 'domain-warmup\.sh|mailcow-health-email\.sh|docker-clean\.sh|mailcow-year-archive\.sh|acme-mailcow|prune'; then
   crontab -l | grep -Ev \
-    'mailcow-health-email\.sh|docker-clean\.sh|mailcow-year-archive\.sh|acme-mailcow' \
+    'domain-warmup\.sh|mailcow-health-email\.sh|docker-clean\.sh|mailcow-year-archive\.sh|acme-mailcow|prune' \
     | crontab -
 fi
 
@@ -305,7 +309,6 @@ if [[ "$SERVER_ROLE" == "mail" ]]; then
 fi
 
 echo "==> Provisioning complete!"
-echo "======================================================="
 echo "User: $ADMIN_USER"
 echo "SSH Port: $SSH_PORT"
 echo "Monitoring: ops-monitor (role=${SERVER_ROLE})"
