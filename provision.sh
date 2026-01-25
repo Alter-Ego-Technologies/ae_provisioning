@@ -293,22 +293,18 @@ provision_web() {
   ufw allow out 587/tcp   # SMTP + STARTTLS
   ufw allow out 465/tcp   # SMTP + TLS
 
-  step "Configuring firewalld for web (HTTP/HTTPS + SSH)"
-
-  # Ensure firewalld is running
-  systemctl enable --now firewalld
-
-# Allow HTTP/HTTPS permanently
-firewall-cmd --permanent --add-service=http
-firewall-cmd --permanent --add-service=https
-
-# SSH: either allow the ssh service...
-firewall-cmd --permanent --add-service=ssh
-
-# ...or if you use a custom SSH port, open it explicitly instead:
-# firewall-cmd --permanent --add-port="${SSH_PORT}/tcp"
-
-firewall-cmd --reload
+  if [[ "${USE_FIREWALLD:-0}" == "1" ]]; then
+    step "Configuring firewalld for web (HTTP/HTTPS + SSH)"
+    systemctl enable --now firewalld
+    firewall-cmd --permanent --add-service=http
+    firewall-cmd --permanent --add-service=https
+    firewall-cmd --permanent --add-service=ssh
+    # firewall-cmd --permanent --add-port="${SSH_PORT}/tcp"
+    firewall-cmd --reload
+  else
+    warn "Skipping firewalld setup (USE_FIREWALLD=0); using UFW only"
+    systemctl disable --now firewalld 2>/dev/null || true
+  fi
 
 
   # ---------------------------------------------------------
