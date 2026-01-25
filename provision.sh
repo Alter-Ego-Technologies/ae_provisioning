@@ -280,6 +280,66 @@ fi
   ok "MAIL role provisioning complete"
 }
 
+provision_web() {
+  step "Running WEB role provisioning"
+
+  # ---------------------------------------------------------
+  # Web firewall ports (base already allows SSH_PORT)
+  # ---------------------------------------------------------
+  step "Allowing HTTP/HTTPS through UFW"
+  ufw allow 80/tcp
+  ufw allow 443/tcp
+
+  # ---------------------------------------------------------
+  # Web-specific packages (Docker like mail role)
+  # ---------------------------------------------------------
+  apt-get update -y
+  apt-get remove -y docker.io containerd runc docker-compose || true
+  apt-get install -y docker-ce docker-ce-cli containerd.io docker-compose-plugin
+
+  # ---------------------------------------------------------
+  # Optional: Docker maintenance script (reuse existing one)
+  # ---------------------------------------------------------
+  step "Installing Docker maintenance script"
+
+  install -m 0755 "$REPO_PATH/scripts/mail/docker-clean.sh" \
+    /usr/local/bin/docker-clean.sh
+
+  # ---------------------------------------------------------
+  # Web maintenance cron (managed file, not crontab -e)
+  # ---------------------------------------------------------
+  step "Installing Web maintenance cron"
+
+  cat > /etc/cron.d/web-maint <<'EOF'
+SHELL=/bin/bash
+PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+
+0 3 * * * root /usr/local/bin/docker-clean.sh >> /var/log/docker-clean.log 2>&1
+0 4 * * 0 root /usr/bin/docker system prune -af >/dev/null 2>&1
+0 5 * * 0 root /usr/bin/docker volume prune -f >/dev/null 2>&1
+EOF
+
+  chmod 0644 /etc/cron.d/web-maint
+
+  # ---------------------------------------------------------
+  # Cleanup: remove mail cron if this host is NOT mail
+  # ---------------------------------------------------------
+  step "Removing Mail maintenance cron (if present)"
+  rm -f /etc/cron.d/mail-maint 2>/dev/null || true
+
+  # ---------------------------------------------------------
+  # Remove legacy related cron entries from root crontab
+  # ---------------------------------------------------------
+  step "Removing legacy maintenance cron jobs from root crontab"
+  if crontab -l 2>/dev/null | grep -E -q 'docker-clean\.sh|docker system prune|docker volume prune'; then
+    crontab -l | grep -Ev \
+      'docker-clean\.sh|docker system prune|docker volume prune' \
+      | crontab -
+  fi
+
+  ok "WEB role provisioning complete"
+}
+
 # ---------------------------------------------------------
 # INSTALL SYSTEMD UNITS
 # ---------------------------------------------------------
@@ -318,9 +378,12 @@ echo
 echo "SAVE THIS KEY NOW — YOU WILL NOT SEE IT AGAIN"
 echo "======================================================="
 
-if [[ "$SERVER_ROLE" == "mail" ]]; then
-  provision_mail
-fi
+case "$SERVER_ROLE" in
+  mail) provision_mail ;;
+  web)  provision_web ;;
+  base) : ;;
+  *)    warn "Unknown SERVER_ROLE='$SERVER_ROLE' (no role-specific steps run)" ;;
+esac
 
 rule
 ok "Provisioning complete!"
