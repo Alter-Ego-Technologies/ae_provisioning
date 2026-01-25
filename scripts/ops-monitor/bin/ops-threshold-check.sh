@@ -127,8 +127,10 @@ services_check() {
   for svc in ${SERVICES:-}; do
     [[ -z "$svc" ]] && continue
     local status="OK"
-    if ! systemctl is-active --quiet "$svc"; then status="CRIT"; fi
-    emit_change "svc_${svc}" "$status" "Service ${svc} is $(systemctl is-active "$svc" 2>/dev/null || echo unknown)"
+    if ! timeout 3 systemctl is-active --quiet "$svc" 2>/dev/null; then status="CRIT"; fi
+    local svc_status
+    svc_status="$(timeout 3 systemctl is-active "$svc" 2>/dev/null || echo unknown)"
+    emit_change "svc_${svc}" "$status" "Service ${svc} is ${svc_status}"
   done
 }
 
