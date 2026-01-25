@@ -66,6 +66,45 @@ mail_section() {
   fi
 }
 
+web_section() {
+  [[ "${ROLE:-base}" != "web" ]] && return 0
+
+  section "🌐 Web (LiteSpeed + CyberPanel)"
+
+  echo "-- LiteSpeed status --"
+  systemctl status lsws --no-pager -l || true
+
+  echo
+  echo "-- CyberPanel daemon --"
+  systemctl status lscpd --no-pager -l || true
+
+  echo
+  echo "-- LiteSpeed access log (last 100 lines) --"
+  if [[ -f /usr/local/lsws/logs/access.log ]]; then
+    tail -n 100 /usr/local/lsws/logs/access.log || true
+  else
+    echo "Access log not found"
+  fi
+
+  echo
+  echo "-- LiteSpeed error log (last 100 lines) --"
+  if [[ -f /usr/local/lsws/logs/error.log ]]; then
+    tail -n 100 /usr/local/lsws/logs/error.log || true
+  else
+    echo "Error log not found"
+  fi
+
+  echo
+  echo "-- MariaDB status --"
+  systemctl status mariadb --no-pager -l || true
+
+  echo
+  echo "-- Website disk usage --"
+  if [[ -d /home ]]; then
+    du -sh /home/* 2>/dev/null | sort -hr | head -n 20 || true
+  fi
+}
+
 body="$(
 {
   echo "📊 WEEKLY OPS SUMMARY"
@@ -127,6 +166,7 @@ body="$(
 
   legacy_health_check
   mail_section
+  web_section
 }
 )"
 subject="WEEKLY OPS SUMMARY ${HOST} (${ROLE})"
