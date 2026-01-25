@@ -290,6 +290,24 @@ provision_web() {
   ufw allow 80/tcp
   ufw allow 443/tcp
 
+  step "Configuring firewalld for web (HTTP/HTTPS + SSH)"
+
+  # Ensure firewalld is running
+  systemctl enable --now firewalld
+
+# Allow HTTP/HTTPS permanently
+firewall-cmd --permanent --add-service=http
+firewall-cmd --permanent --add-service=https
+
+# SSH: either allow the ssh service...
+firewall-cmd --permanent --add-service=ssh
+
+# ...or if you use a custom SSH port, open it explicitly instead:
+# firewall-cmd --permanent --add-port="${SSH_PORT}/tcp"
+
+firewall-cmd --reload
+
+
   # ---------------------------------------------------------
   # Web-specific packages (Docker like mail role)
   # ---------------------------------------------------------
