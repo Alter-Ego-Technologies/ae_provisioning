@@ -15,14 +15,14 @@ section() {
   echo "==== 🔹 $* ===="
 }
 
-# #legacy_health_check() {
-#   section "Legacy server_health_check"
-#   if command -v server_health_check >/dev/null 2>&1; then
-#     server_health_check || true
-#   else
-#     echo "server_health_check not installed"
-#   fi
-# }
+legacy_health_check() {
+  section "Legacy server_health_check"
+  if command -v server_health_check >/dev/null 2>&1; then
+    server_health_check || true
+  else
+    echo "server_health_check not installed"
+  fi
+}
 
 mail_section() {
   [[ "${ROLE:-base}" != "mail" ]] && return 0
