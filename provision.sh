@@ -107,7 +107,7 @@ else
 fi
 
 step "Enabling passwordless sudo"
-usermod -aG sudo,adm,systemd-journal "$ADMIN_USER"
+usermod -aG sudo,adm,systemd-journal,docker "$ADMIN_USER"
 echo "$ADMIN_USER ALL=(ALL) NOPASSWD:ALL" > /etc/sudoers.d/90-$ADMIN_USER
 chmod 440 /etc/sudoers.d/90-$ADMIN_USER
 
