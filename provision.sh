@@ -286,9 +286,12 @@ provision_web() {
   # ---------------------------------------------------------
   # Web firewall ports (base already allows SSH_PORT)
   # ---------------------------------------------------------
-  step "Allowing HTTP/HTTPS through UFW"
+  step "Allowing HTTP/HTTPS/SMTP through UFW"
   ufw allow 80/tcp
   ufw allow 443/tcp
+  ufw allow out 25/tcp    # SMTP (alert relay to mail server)
+  ufw allow out 587/tcp   # SMTP + STARTTLS
+  ufw allow out 465/tcp   # SMTP + TLS
 
   step "Configuring firewalld for web (HTTP/HTTPS + SSH)"
 

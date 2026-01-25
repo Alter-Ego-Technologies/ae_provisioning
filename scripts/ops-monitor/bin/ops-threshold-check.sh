@@ -264,14 +264,19 @@ if (( changed_any == 1 )); then
   
   subject="$emoji ALERT [${max}] ${HOST} (${ROLE})"
   body="$(cat <<EOF
-🖥️ Host: ${HOST}
-🧩 Role: ${ROLE}
-⏰ Time: ${NOW_HUMAN}
+========================================
+${emoji} Ops Alert
+========================================
+Host    : ${HOST}
+Role    : ${ROLE}
+Time    : ${NOW_HUMAN}
+Severity: ${max}
 
-📋 Items:
-$(printf '%s\n' "${report_lines[@]}" | sed 's/^/  /')
+Issues:
+$(printf '  - %s\n' "${report_lines[@]}")
 
-📂 State: ${STATE_DIR}/state.env
+State file: ${STATE_DIR}/state.env
+========================================
 EOF
 )"
   send_email "$subject" "$body"

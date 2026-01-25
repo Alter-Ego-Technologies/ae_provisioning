@@ -107,10 +107,13 @@ web_section() {
 
 body="$(
 {
+  echo "========================================"
   echo "📊 WEEKLY OPS SUMMARY"
-  echo "🖥️ Host: ${HOST}"
-  echo "🧩 Role: ${ROLE}"
-  echo "⏳ Window: ${START} -> ${NOW}"
+  echo "========================================"
+  echo "Host   : ${HOST}"
+  echo "Role   : ${ROLE}"
+  echo "Window : ${START} -> ${NOW}"
+  echo "========================================"
 
   section "⏱️ Uptime / Reboots"
   uptime || true
@@ -167,6 +170,7 @@ body="$(
   legacy_health_check
   mail_section
   web_section
+  echo "========================================"
 }
 )"
 subject="WEEKLY OPS SUMMARY ${HOST} (${ROLE})"
