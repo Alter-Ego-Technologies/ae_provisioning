@@ -386,16 +386,38 @@ rm -f /etc/cron.d/server_health_check || true
 # OUTPUT PRIVATE SSH KEY
 # ---------------------------------------------------------
 
+provision_nextcloud() {
+  step "Running NEXTCLOUD role provisioning"
+  # Pull required images
+  docker pull nextcloud
+  docker pull mariadb:10.6
+
+  # Create external volumes if not present
+  docker volume inspect nextcloud_data >/dev/null 2>&1 || docker volume create nextcloud_data
+  docker volume inspect nextcloud_db >/dev/null 2>&1 || docker volume create nextcloud_db
+
+  # Start containers using docker-compose (if available)
+  if [ -f /opt/nextcloud/docker-compose.yml ]; then
+    step "Starting Nextcloud stack via docker-compose..."
+    docker-compose -f /opt/nextcloud/docker-compose.yml up -d
+  else
+    err "docker-compose.yml not found. Please place it at /opt/nextcloud/docker-compose.yml."
+    exit 1
+  fi
+
+  ok "NEXTCLOUD role provisioning complete"
+}
 rule
 banner "🔐 SSH PRIVATE KEY FOR $ADMIN_USER"
 rule
 echo
 cat /home/$ADMIN_USER/.ssh/id_ed25519
-echo
-echo "SAVE THIS KEY NOW — YOU WILL NOT SEE IT AGAIN"
-echo "======================================================="
-
 case "$SERVER_ROLE" in
+  mail) provision_mail ;;
+  web)  provision_web ;;
+  nextcloud) provision_nextcloud ;;
+  base) : ;;
+  *)    warn "Unknown SERVER_ROLE='$SERVER_ROLE' (no role-specific steps run)" ;;
   mail) provision_mail ;;
   web)  provision_web ;;
   base) : ;;
