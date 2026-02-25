@@ -25,4 +25,4 @@ SQL_OUT="/mnt/Backups/nextcloud/sql/nextcloud_${STAMP}.sql"
 echo "[INFO] Connecting to $NC_SERVER_NAME ($NC_PRI) as $NC_SSH_USER on port $NC_SSH_PORT"
 
 rsync -aHAX --delete -e "ssh -p ${NC_SSH_PORT}" ${NC_SSH_USER}@${NC_PRI}:${NC_DATA_SRC}/ /mnt/Backups/nextcloud/data/
-ssh -p ${NC_SSH_PORT} ${NC_SSH_USER}@${NC_PRI} "mysqldump --single-transaction -h${DB_HOST:-localhost} -P${DB_PORT:-3306} -u${DB_USER} -p'${DB_PASS}' ${DB_NAME}" > ${SQL_OUT}
+ssh -p ${NC_SSH_PORT} ${NC_SSH_USER}@${NC_PRI} "docker exec nextcloud_db mysqldump --single-transaction -u${DB_USER} -p'${DB_PASS}' ${DB_NAME}" > ${SQL_OUT}
