@@ -1,8 +1,7 @@
 #!/usr/bin/env bash
 set -e
 mountpoint -q /mnt/Backups || { echo "ERROR: /mnt/Backups not mounted"; exit 1; }
-# Use /tmp for lock file to support non-root execution
-exec 9>/tmp/backup.lock
+exec 9>/var/lock/backup.lock
 flock -n 9 || exit 0
 
 STAMP=$(date +%F_%H%M%S)
@@ -15,7 +14,7 @@ CONF_PATH="/mnt/Backups/nextcloud/nextcloud.conf"
 # Default SSH port and user if not set
 NC_SSH_PORT="${NC_SSH_PORT:-22}"
 NC_SSH_USER="${NC_SSH_USER:-gabe}"
-NC_SERVER_NAME="${NC_SERVER_NAME:-nextcloud}"
+NC_SERVER_NAME="${NC_SERVER_NAME:-nextcloud-primary}"
 
 STAMP=$(date +%F_%H%M%S)
 SQL_OUT="/mnt/Backups/nextcloud/sql/nextcloud_${STAMP}.sql"
