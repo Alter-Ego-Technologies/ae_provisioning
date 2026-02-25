@@ -1,0 +1,6 @@
+# Example Nextcloud backup config
+NC_PRI=10.0.0.11
+NC_DATA_SRC="/path/to/nextcloud_data"
+DB_NAME="nextcloud"
+DB_USER="nextcloud"
+DB_PASS="your_db_password"

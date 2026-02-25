@@ -1,0 +1,3 @@
+# Example Mailcow backup config
+MC_PRI=10.0.0.12
+MC_BACKUP_SRC="/opt/mailcow-dockerized/backup"

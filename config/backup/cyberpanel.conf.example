@@ -1,0 +1,4 @@
+# Example CyberPanel backup config
+CP_PRI=10.0.0.13
+CP_DB_USER="root"
+CP_DB_PASS="your_db_password"

@@ -6,6 +6,10 @@ flock -n 9 || exit 0
 
 CP_PRI=10.0.0.13
 
+# Source config from /mnt/Backups/cyberpanel/cyberpanel.conf if present
+CONF_PATH="/mnt/Backups/cyberpanel/cyberpanel.conf"
+[ -f "$CONF_PATH" ] && source "$CONF_PATH"
+
 rsync -aHAX --delete -e ssh root@${CP_PRI}:/home/ /mnt/Backups/cyberpanel/home/
 STAMP=$(date +%F_%H%M%S)
 ssh root@${CP_PRI} "mysqldump --all-databases --single-transaction" | gzip > /mnt/Backups/cyberpanel/db/cyberpanel_${STAMP}.sql.gz
