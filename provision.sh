@@ -222,6 +222,16 @@ chmod 0644 /etc/ops-monitor/role
 # BACKUP ROLE FUNCTION
 # ---------------------------------------------------------
 provision_backup() {
+    # 3a. Copy example configs to runtime locations if missing
+    for service in nextcloud mailcow cyberpanel; do
+      example_conf="$REPO_PATH/config/backup/${service}.conf.example"
+      dest_conf="$BACKUP_ROOT/${service}/${service}.conf"
+      mkdir -p "$BACKUP_ROOT/$service"
+      if [ -f "$example_conf" ] && [ ! -f "$dest_conf" ]; then
+        cp "$example_conf" "$dest_conf"
+        ok "Installed example config for $service at $dest_conf (edit with real values!)"
+      fi
+    done
   step "Running BACKUP role provisioning"
 
   BACKUP_ROOT="/mnt/Backups"
