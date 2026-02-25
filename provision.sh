@@ -469,8 +469,8 @@ rule
 banner "🔐 SSH PRIVATE KEY FOR $ADMIN_USER"
 rule
 echo
+
 cat /home/$ADMIN_USER/.ssh/id_ed25519
-esac
 
 case "$SERVER_ROLE" in
   mail) provision_mail ;;
