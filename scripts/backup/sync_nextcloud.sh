@@ -13,7 +13,7 @@ CONF_PATH="/mnt/Backups/nextcloud/nextcloud.conf"
 
 # Default SSH port and user if not set
 NC_SSH_PORT="${NC_SSH_PORT:-22}"
-NC_SSH_USER="${NC_SSH_USER:-gabe}"
+NC_SSH_USER="${NC_SSH_USER:-root}"
 NC_SERVER_NAME="${NC_SERVER_NAME:-nextcloud-primary}"
 
 STAMP=$(date +%F_%H%M%S)
