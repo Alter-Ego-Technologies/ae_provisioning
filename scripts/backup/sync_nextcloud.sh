@@ -11,14 +11,6 @@ SQL_OUT="/mnt/Backups/nextcloud/sql/nextcloud_${STAMP}.sql"
 CONF_PATH="/mnt/Backups/nextcloud/nextcloud.conf"
 [ -f "$CONF_PATH" ] && source "$CONF_PATH"
 
-# Default SSH port and user if not set
-NC_SSH_PORT="${NC_SSH_PORT:-22}"
-NC_SSH_USER="${NC_SSH_USER:-root}"
-NC_SERVER_NAME="${NC_SERVER_NAME:-nextcloud-primary}"
-
-# Use /mnt/nextcloud as the backup source directory
-#NC_DATA_SRC="/mnt/nextcloud"
-
 STAMP=$(date +%F_%H%M%S)
 SQL_OUT="/mnt/Backups/nextcloud/sql/nextcloud_${STAMP}.sql"
 
