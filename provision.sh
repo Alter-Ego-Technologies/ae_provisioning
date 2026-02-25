@@ -224,7 +224,7 @@ chmod 0644 /etc/ops-monitor/role
 provision_backup() {
     BACKUP_ROOT="/mnt/Backups"
     # 3a. Copy example configs to runtime locations if missing
-    for service in nextcloud mailcow cyberpanel; do
+    for service in nextcloud mailcow cyberpanel web; do
       example_conf="$REPO_PATH/config/backup/${service}.conf.example"
       dest_conf="$BACKUP_ROOT/${service}/${service}.conf"
       mkdir -p "$BACKUP_ROOT/$service"
@@ -240,6 +240,7 @@ provision_backup() {
   mkdir -p $BACKUP_ROOT/nextcloud/{data,sql}
   mkdir -p $BACKUP_ROOT/mailcow/{backups}
   mkdir -p $BACKUP_ROOT/cyberpanel/{home,db}
+  mkdir -p $BACKUP_ROOT/web/{data}
 
   # 2. Install required tools
   apt-get update -y
@@ -249,11 +250,13 @@ provision_backup() {
   install -m 0755 "$REPO_PATH/scripts/backup/sync_nextcloud.sh" $BACKUP_ROOT/scripts/sync_nextcloud.sh
   install -m 0755 "$REPO_PATH/scripts/backup/sync_mailcow.sh" $BACKUP_ROOT/scripts/sync_mailcow.sh
   install -m 0755 "$REPO_PATH/scripts/backup/sync_cyberpanel.sh" $BACKUP_ROOT/scripts/sync_cyberpanel.sh
+  install -m 0755 "$REPO_PATH/scripts/backup/sync_web.sh" $BACKUP_ROOT/scripts/sync_web.sh
 
   # Also install to /usr/local/bin for global access
   install -m 0755 "$REPO_PATH/scripts/backup/sync_nextcloud.sh" /usr/local/bin/sync_nextcloud.sh
   install -m 0755 "$REPO_PATH/scripts/backup/sync_mailcow.sh" /usr/local/bin/sync_mailcow.sh
   install -m 0755 "$REPO_PATH/scripts/backup/sync_cyberpanel.sh" /usr/local/bin/sync_cyberpanel.sh
+  install -m 0755 "$REPO_PATH/scripts/backup/sync_web.sh" /usr/local/bin/sync_web.sh
 
   ok "BACKUP role provisioning complete"
 
@@ -269,6 +272,8 @@ PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 15 2 * * * ${ADMIN_USER} /mnt/Backups/scripts/sync_nextcloud.sh >> /mnt/Backups/logs/nextcloud.log 2>&1
 # CyberPanel: nightly at 3:15
 15 3 * * * ${ADMIN_USER} /mnt/Backups/scripts/sync_cyberpanel.sh >> /mnt/Backups/logs/cyberpanel.log 2>&1
+# Web: nightly at 4:15
+15 4 * * * ${ADMIN_USER} /mnt/Backups/scripts/sync_web.sh >> /mnt/Backups/logs/web.log 2>&1
 EOF
   chmod 0644 /etc/cron.d/backup-maint
   ok "Backup cron schedule installed"
@@ -345,37 +350,19 @@ fi
 }
 
 provision_web() {
-  step "Running WEB role provisioning"
+  step "Running Standalone WEB role provisioning"
 
-  # ---------------------------------------------------------
   # Web firewall ports (base already allows SSH_PORT)
-  # ---------------------------------------------------------
   step "Allowing HTTP/HTTPS/SMTP through UFW"
   ufw allow 80/tcp
   ufw allow 443/tcp
   ufw allow out 25/tcp    # SMTP (alert relay to mail server)
   ufw allow out 587/tcp   # SMTP + STARTTLS
-    # 3. Install backup scripts from repo
-    install -m 0755 "$REPO_PATH/scripts/backup/sync_nextcloud.sh" $BACKUP_ROOT/scripts/sync_nextcloud.sh
-    install -m 0755 "$REPO_PATH/scripts/backup/sync_mailcow.sh" $BACKUP_ROOT/scripts/sync_mailcow.sh
-    install -m 0755 "$REPO_PATH/scripts/backup/sync_cyberpanel.sh" $BACKUP_ROOT/scripts/sync_cyberpanel.sh
 
-    # Also install to /usr/local/bin for global access
-    install -m 0755 "$REPO_PATH/scripts/backup/sync_nextcloud.sh" /usr/local/bin/sync_nextcloud.sh
-    install -m 0755 "$REPO_PATH/scripts/backup/sync_mailcow.sh" /usr/local/bin/sync_mailcow.sh
-    install -m 0755 "$REPO_PATH/scripts/backup/sync_cyberpanel.sh" /usr/local/bin/sync_cyberpanel.sh
-
-    ok "BACKUP role provisioning complete"
-  rm -f /etc/cron.d/mail-maint 2>/dev/null || true
-
-  # ---------------------------------------------------------
   # Remove legacy related cron entries from root crontab
-  # ---------------------------------------------------------
   step "Removing legacy maintenance cron jobs from root crontab"
   if crontab -l 2>/dev/null | grep -E -q 'docker-clean\.sh|docker system prune|docker volume prune'; then
-    crontab -l | grep -Ev \
-      'docker-clean\.sh|docker system prune|docker volume prune' \
-      | crontab -
+    crontab -l | grep -Ev 'docker-clean\.sh|docker system prune|docker volume prune' | crontab -
   fi
 
   ok "WEB role provisioning complete"
@@ -438,9 +425,46 @@ echo
 
 cat /home/$ADMIN_USER/.ssh/id_ed25519
 
+
+provision_cyberpanel() {
+  step "Running CYBERPANEL role provisioning"
+
+  # Open CyberPanel and web ports
+  step "Allowing CyberPanel and web ports through UFW"
+  ufw allow 8090/tcp   # CyberPanel admin
+  ufw allow 80/tcp     # HTTP
+  ufw allow 443/tcp    # HTTPS
+  ufw allow 21/tcp     # FTP
+  ufw allow 25/tcp     # SMTP
+  ufw allow 587/tcp    # SMTP submission
+  ufw allow 465/tcp    # SMTPS
+  ufw allow 53/tcp     # DNS
+  ufw allow 53/udp     # DNS
+  ufw allow 3306/tcp   # MariaDB/MySQL (optional, restrict as needed)
+
+  # Install or update CyberPanel without affecting user data
+  if command -v cyberpanel >/dev/null 2>&1 || [ -d "/usr/local/CyberCP" ]; then
+    step "Updating CyberPanel (safe upgrade, data preserved)"
+    wget -O /tmp/cyberpanel_install.sh https://cyberpanel.net/install.sh
+    bash /tmp/cyberpanel_install.sh --upgrade
+    rm -f /tmp/cyberpanel_install.sh
+    ok "CyberPanel updated (user data preserved)"
+  else
+    step "Installing CyberPanel (fresh install)"
+    wget -O /tmp/cyberpanel_install.sh https://cyberpanel.net/install.sh
+    bash /tmp/cyberpanel_install.sh
+    rm -f /tmp/cyberpanel_install.sh
+    ok "CyberPanel installed"
+  fi
+
+  ok "CYBERPANEL role provisioning complete"
+}
+
 case "$SERVER_ROLE" in
   mail) provision_mail ;;
   web)  provision_web ;;
+  cyberpanel) provision_cyberpanel ;;
+  web_cyberpanel) provision_web; provision_cyberpanel ;;
   nextcloud) provision_nextcloud ;;
   backup) provision_backup ;;
   base) : ;;

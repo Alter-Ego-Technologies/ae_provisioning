@@ -1,4 +1,17 @@
-# Example CyberPanel backup config
-CP_PRI=10.0.0.13
-CP_DB_USER="root"
-CP_DB_PASS="your_db_password"
+# Example config for CyberPanel backup
+# Copy to /mnt/Backups/cyberpanel/cyberpanel.conf and edit with real values
+
+# Primary CyberPanel server IP or hostname
+CP_PRI=cyberpanel.example.com
+# SSH user for backup
+CP_SSH_USER=gabe
+# SSH port
+CP_SSH_PORT=22
+# Source directory to back up (user home directories)
+CP_HOME_SRC=/home
+# Destination directory on backup server
+CP_HOME_DST=/mnt/Backups/cyberpanel/home
+# Dump all databases (set to 1 to enable)
+CP_DB_DUMP=1
+# Destination for DB dumps
+CP_DB_DST=/mnt/Backups/cyberpanel/db

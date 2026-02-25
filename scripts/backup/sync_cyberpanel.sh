@@ -4,8 +4,6 @@ mountpoint -q /mnt/Backups || { echo "ERROR: /mnt/Backups not mounted"; exit 1; 
 exec 9>/var/lock/backup.lock
 flock -n 9 || exit 0
 
-CP_PRI=10.0.0.13
-
 # Source config from /mnt/Backups/cyberpanel/cyberpanel.conf if present
 CONF_PATH="/mnt/Backups/cyberpanel/cyberpanel.conf"
 [ -f "$CONF_PATH" ] && source "$CONF_PATH"
