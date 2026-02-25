@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -e
 mountpoint -q /mnt/Backups || { echo "ERROR: /mnt/Backups not mounted"; exit 1; }
-exec 9>/var/lock/backup.lock
+exec 9>/tmp/backup.lock
 flock -n 9 || exit 0
 
 STAMP=$(date +%F_%H%M%S)
