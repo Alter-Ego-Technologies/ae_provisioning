@@ -81,6 +81,8 @@ step "Installing pipx + Linode CLI"
 apt install -y pipx
 pipx ensurepath
 
+ok "Linode CLI installed successfully"
+
 # Add pipx bin path for root
 if ! grep -q "/root/.local/bin" /root/.bashrc; then
     echo 'export PATH="/root/.local/bin:$PATH"' >> /root/.bashrc
@@ -95,6 +97,11 @@ which linode-cli || echo "ERROR: linode-cli not found in PATH"
 linode-cli --version || echo "ERROR: linode-cli failed to execute"
 
 ok "Linode CLI installed successfully"
+
+# Ensure docker group exists before adding user
+if ! getent group docker >/dev/null; then
+  groupadd docker
+fi
 
 # ---------------------------------------------------------
 # CREATE USER & SSH SETUP
@@ -205,10 +212,101 @@ fi
 # Install role overlays (safe to overwrite from repo templates)
 install -m 0644 "$REPO_PATH/config/ops-monitor/roles/"*.conf /etc/ops-monitor/roles/ 2>/dev/null || true
 
+
 # Set server role (before installing systemd units)
 SERVER_ROLE="${SERVER_ROLE:-base}"
 echo "$SERVER_ROLE" > /etc/ops-monitor/role
 chmod 0644 /etc/ops-monitor/role
+
+# ---------------------------------------------------------
+# BACKUP ROLE FUNCTION
+# ---------------------------------------------------------
+provision_backup() {
+  step "Running BACKUP role provisioning"
+
+  BACKUP_ROOT="/mnt/Backups"
+  # 1. Ensure backup directory structure
+  mkdir -p $BACKUP_ROOT/{scripts,logs}
+  mkdir -p $BACKUP_ROOT/nextcloud/{data,sql}
+  mkdir -p $BACKUP_ROOT/mailcow/{backups}
+  mkdir -p $BACKUP_ROOT/cyberpanel/{home,db}
+
+  # 2. Install required tools
+  apt-get update -y
+  apt-get install -y rsync mariadb-client curl unzip
+
+  # 3. Create example sync scripts (user must edit with real IPs/paths)
+  cat > $BACKUP_ROOT/scripts/sync_nextcloud.sh <<'EOF'
+#!/usr/bin/env bash
+set -e
+mountpoint -q /mnt/Backups || { echo "ERROR: /mnt/Backups not mounted"; exit 1; }
+exec 9>/var/lock/backup.lock
+flock -n 9 || exit 0
+
+NC_PRI=10.0.0.11
+NC_DATA_SRC="/REAL/DATA/PATH"
+DB_NAME="nextcloud"
+DB_USER="nextcloud"
+DB_PASS="CHANGE_ME"
+
+STAMP=$(date +%F_%H%M%S)
+SQL_OUT="/mnt/Backups/nextcloud/sql/nextcloud_${STAMP}.sql"
+
+rsync -aHAX --delete -e ssh root@${NC_PRI}:${NC_DATA_SRC}/ /mnt/Backups/nextcloud/data/
+ssh root@${NC_PRI} "mysqldump --single-transaction -u${DB_USER} -p'${DB_PASS}' ${DB_NAME}" > ${SQL_OUT}
+EOF
+  chmod +x $BACKUP_ROOT/scripts/sync_nextcloud.sh
+  install -m 0755 $BACKUP_ROOT/scripts/sync_nextcloud.sh /usr/local/bin/sync_nextcloud.sh
+
+  cat > $BACKUP_ROOT/scripts/sync_mailcow.sh <<'EOF'
+#!/usr/bin/env bash
+set -e
+mountpoint -q /mnt/Backups || { echo "ERROR: /mnt/Backups not mounted"; exit 1; }
+exec 9>/var/lock/backup.lock
+flock -n 9 || exit 0
+
+MC_PRI=10.0.0.12
+MC_BACKUP_SRC="/opt/mailcow-dockerized/backup"
+
+rsync -aHAX --delete -e ssh root@${MC_PRI}:${MC_BACKUP_SRC}/ /mnt/Backups/mailcow/backups/
+EOF
+  chmod +x $BACKUP_ROOT/scripts/sync_mailcow.sh
+  install -m 0755 $BACKUP_ROOT/scripts/sync_mailcow.sh /usr/local/bin/sync_mailcow.sh
+
+  cat > $BACKUP_ROOT/scripts/sync_cyberpanel.sh <<'EOF'
+#!/usr/bin/env bash
+set -e
+mountpoint -q /mnt/Backups || { echo "ERROR: /mnt/Backups not mounted"; exit 1; }
+exec 9>/var/lock/backup.lock
+flock -n 9 || exit 0
+
+CP_PRI=10.0.0.13
+
+rsync -aHAX --delete -e ssh root@${CP_PRI}:/home/ /mnt/Backups/cyberpanel/home/
+STAMP=$(date +%F_%H%M%S)
+ssh root@${CP_PRI} "mysqldump --all-databases --single-transaction" | gzip > /mnt/Backups/cyberpanel/db/cyberpanel_${STAMP}.sql.gz
+EOF
+  chmod +x $BACKUP_ROOT/scripts/sync_cyberpanel.sh
+  install -m 0755 $BACKUP_ROOT/scripts/sync_cyberpanel.sh /usr/local/bin/sync_cyberpanel.sh
+
+  ok "BACKUP role provisioning complete"
+
+  # 4. Install managed cron for backup scripts
+  step "Installing backup cron schedule"
+  cat > /etc/cron.d/backup-maint <<'EOF'
+SHELL=/bin/bash
+PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+
+# Mailcow: every hour
+0 * * * * root /mnt/Backups/scripts/sync_mailcow.sh >> /mnt/Backups/logs/mailcow.log 2>&1
+# Nextcloud: nightly at 2:15
+15 2 * * * root /mnt/Backups/scripts/sync_nextcloud.sh >> /mnt/Backups/logs/nextcloud.log 2>&1
+# CyberPanel: nightly at 3:15
+15 3 * * * root /mnt/Backups/scripts/sync_cyberpanel.sh >> /mnt/Backups/logs/cyberpanel.log 2>&1
+EOF
+  chmod 0644 /etc/cron.d/backup-maint
+  ok "Backup cron schedule installed"
+}
 
 provision_mail() {
   step "Running MAIL role provisioning"
@@ -291,57 +389,17 @@ provision_web() {
   ufw allow 443/tcp
   ufw allow out 25/tcp    # SMTP (alert relay to mail server)
   ufw allow out 587/tcp   # SMTP + STARTTLS
-  ufw allow out 465/tcp   # SMTP + TLS
+    # 3. Install backup scripts from repo
+    install -m 0755 "$REPO_PATH/scripts/backup/sync_nextcloud.sh" $BACKUP_ROOT/scripts/sync_nextcloud.sh
+    install -m 0755 "$REPO_PATH/scripts/backup/sync_mailcow.sh" $BACKUP_ROOT/scripts/sync_mailcow.sh
+    install -m 0755 "$REPO_PATH/scripts/backup/sync_cyberpanel.sh" $BACKUP_ROOT/scripts/sync_cyberpanel.sh
 
-  if [[ "${USE_FIREWALLD:-0}" == "1" ]]; then
-    step "Configuring firewalld for web (HTTP/HTTPS + SSH)"
-    systemctl enable --now firewalld
-    firewall-cmd --permanent --add-service=http
-    firewall-cmd --permanent --add-service=https
-    firewall-cmd --permanent --add-service=ssh
-    # firewall-cmd --permanent --add-port="${SSH_PORT}/tcp"
-    firewall-cmd --reload
-  else
-    warn "Skipping firewalld setup (USE_FIREWALLD=0); using UFW only"
-    systemctl disable --now firewalld 2>/dev/null || true
-  fi
+    # Also install to /usr/local/bin for global access
+    install -m 0755 "$REPO_PATH/scripts/backup/sync_nextcloud.sh" /usr/local/bin/sync_nextcloud.sh
+    install -m 0755 "$REPO_PATH/scripts/backup/sync_mailcow.sh" /usr/local/bin/sync_mailcow.sh
+    install -m 0755 "$REPO_PATH/scripts/backup/sync_cyberpanel.sh" /usr/local/bin/sync_cyberpanel.sh
 
-
-  # ---------------------------------------------------------
-  # Web-specific packages (Docker like mail role)
-  # ---------------------------------------------------------
-  apt-get update -y
-  apt-get remove -y docker.io containerd runc docker-compose || true
-  apt-get install -y docker-ce docker-ce-cli containerd.io docker-compose-plugin
-
-  # ---------------------------------------------------------
-  # Optional: Docker maintenance script (reuse existing one)
-  # ---------------------------------------------------------
-  step "Installing Docker maintenance script"
-
-  install -m 0755 "$REPO_PATH/scripts/mail/docker-clean.sh" \
-    /usr/local/bin/docker-clean.sh
-
-  # ---------------------------------------------------------
-  # Web maintenance cron (managed file, not crontab -e)
-  # ---------------------------------------------------------
-  step "Installing Web maintenance cron"
-
-  cat > /etc/cron.d/web-maint <<'EOF'
-SHELL=/bin/bash
-PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
-
-0 3 * * * root /usr/local/bin/docker-clean.sh >> /var/log/docker-clean.log 2>&1
-0 4 * * 0 root /usr/bin/docker system prune -af >/dev/null 2>&1
-0 5 * * 0 root /usr/bin/docker volume prune -f >/dev/null 2>&1
-EOF
-
-  chmod 0644 /etc/cron.d/web-maint
-
-  # ---------------------------------------------------------
-  # Cleanup: remove mail cron if this host is NOT mail
-  # ---------------------------------------------------------
-  step "Removing Mail maintenance cron (if present)"
+    ok "BACKUP role provisioning complete"
   rm -f /etc/cron.d/mail-maint 2>/dev/null || true
 
   # ---------------------------------------------------------
@@ -412,14 +470,13 @@ banner "🔐 SSH PRIVATE KEY FOR $ADMIN_USER"
 rule
 echo
 cat /home/$ADMIN_USER/.ssh/id_ed25519
+esac
+
 case "$SERVER_ROLE" in
   mail) provision_mail ;;
   web)  provision_web ;;
   nextcloud) provision_nextcloud ;;
-  base) : ;;
-  *)    warn "Unknown SERVER_ROLE='$SERVER_ROLE' (no role-specific steps run)" ;;
-  mail) provision_mail ;;
-  web)  provision_web ;;
+  backup) provision_backup ;;
   base) : ;;
   *)    warn "Unknown SERVER_ROLE='$SERVER_ROLE' (no role-specific steps run)" ;;
 esac
