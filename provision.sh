@@ -259,16 +259,16 @@ provision_backup() {
 
   # 4. Install managed cron for backup scripts
   step "Installing backup cron schedule"
-  cat > /etc/cron.d/backup-maint <<'EOF'
+  cat > /etc/cron.d/backup-maint <<EOF
 SHELL=/bin/bash
 PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 
 # Mailcow: every hour
-0 * * * * root /mnt/Backups/scripts/sync_mailcow.sh >> /mnt/Backups/logs/mailcow.log 2>&1
+0 * * * * ${ADMIN_USER} /mnt/Backups/scripts/sync_mailcow.sh >> /mnt/Backups/logs/mailcow.log 2>&1
 # Nextcloud: nightly at 2:15
-15 2 * * * root /mnt/Backups/scripts/sync_nextcloud.sh >> /mnt/Backups/logs/nextcloud.log 2>&1
+15 2 * * * ${ADMIN_USER} /mnt/Backups/scripts/sync_nextcloud.sh >> /mnt/Backups/logs/nextcloud.log 2>&1
 # CyberPanel: nightly at 3:15
-15 3 * * * root /mnt/Backups/scripts/sync_cyberpanel.sh >> /mnt/Backups/logs/cyberpanel.log 2>&1
+15 3 * * * ${ADMIN_USER} /mnt/Backups/scripts/sync_cyberpanel.sh >> /mnt/Backups/logs/cyberpanel.log 2>&1
 EOF
   chmod 0644 /etc/cron.d/backup-maint
   ok "Backup cron schedule installed"
