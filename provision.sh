@@ -235,59 +235,15 @@ provision_backup() {
   apt-get update -y
   apt-get install -y rsync mariadb-client curl unzip
 
-  # 3. Create example sync scripts (user must edit with real IPs/paths)
-  cat > $BACKUP_ROOT/scripts/sync_nextcloud.sh <<'EOF'
-#!/usr/bin/env bash
-set -e
-mountpoint -q /mnt/Backups || { echo "ERROR: /mnt/Backups not mounted"; exit 1; }
-exec 9>/var/lock/backup.lock
-flock -n 9 || exit 0
+  # 3. Install backup scripts from repo
+  install -m 0755 "$REPO_PATH/scripts/backup/sync_nextcloud.sh" $BACKUP_ROOT/scripts/sync_nextcloud.sh
+  install -m 0755 "$REPO_PATH/scripts/backup/sync_mailcow.sh" $BACKUP_ROOT/scripts/sync_mailcow.sh
+  install -m 0755 "$REPO_PATH/scripts/backup/sync_cyberpanel.sh" $BACKUP_ROOT/scripts/sync_cyberpanel.sh
 
-NC_PRI=10.0.0.11
-NC_DATA_SRC="/REAL/DATA/PATH"
-DB_NAME="nextcloud"
-DB_USER="nextcloud"
-DB_PASS="CHANGE_ME"
-
-STAMP=$(date +%F_%H%M%S)
-SQL_OUT="/mnt/Backups/nextcloud/sql/nextcloud_${STAMP}.sql"
-
-rsync -aHAX --delete -e ssh root@${NC_PRI}:${NC_DATA_SRC}/ /mnt/Backups/nextcloud/data/
-ssh root@${NC_PRI} "mysqldump --single-transaction -u${DB_USER} -p'${DB_PASS}' ${DB_NAME}" > ${SQL_OUT}
-EOF
-  chmod +x $BACKUP_ROOT/scripts/sync_nextcloud.sh
-  install -m 0755 $BACKUP_ROOT/scripts/sync_nextcloud.sh /usr/local/bin/sync_nextcloud.sh
-
-  cat > $BACKUP_ROOT/scripts/sync_mailcow.sh <<'EOF'
-#!/usr/bin/env bash
-set -e
-mountpoint -q /mnt/Backups || { echo "ERROR: /mnt/Backups not mounted"; exit 1; }
-exec 9>/var/lock/backup.lock
-flock -n 9 || exit 0
-
-MC_PRI=10.0.0.12
-MC_BACKUP_SRC="/opt/mailcow-dockerized/backup"
-
-rsync -aHAX --delete -e ssh root@${MC_PRI}:${MC_BACKUP_SRC}/ /mnt/Backups/mailcow/backups/
-EOF
-  chmod +x $BACKUP_ROOT/scripts/sync_mailcow.sh
-  install -m 0755 $BACKUP_ROOT/scripts/sync_mailcow.sh /usr/local/bin/sync_mailcow.sh
-
-  cat > $BACKUP_ROOT/scripts/sync_cyberpanel.sh <<'EOF'
-#!/usr/bin/env bash
-set -e
-mountpoint -q /mnt/Backups || { echo "ERROR: /mnt/Backups not mounted"; exit 1; }
-exec 9>/var/lock/backup.lock
-flock -n 9 || exit 0
-
-CP_PRI=10.0.0.13
-
-rsync -aHAX --delete -e ssh root@${CP_PRI}:/home/ /mnt/Backups/cyberpanel/home/
-STAMP=$(date +%F_%H%M%S)
-ssh root@${CP_PRI} "mysqldump --all-databases --single-transaction" | gzip > /mnt/Backups/cyberpanel/db/cyberpanel_${STAMP}.sql.gz
-EOF
-  chmod +x $BACKUP_ROOT/scripts/sync_cyberpanel.sh
-  install -m 0755 $BACKUP_ROOT/scripts/sync_cyberpanel.sh /usr/local/bin/sync_cyberpanel.sh
+  # Also install to /usr/local/bin for global access
+  install -m 0755 "$REPO_PATH/scripts/backup/sync_nextcloud.sh" /usr/local/bin/sync_nextcloud.sh
+  install -m 0755 "$REPO_PATH/scripts/backup/sync_mailcow.sh" /usr/local/bin/sync_mailcow.sh
+  install -m 0755 "$REPO_PATH/scripts/backup/sync_cyberpanel.sh" /usr/local/bin/sync_cyberpanel.sh
 
   ok "BACKUP role provisioning complete"
 
