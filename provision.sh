@@ -17,12 +17,19 @@ if [[ -z "${SERVER_ROLE:-}" ]]; then
   echo "  5) WebCyberPanel- Both CyberPanel and custom web stack together"
   echo "  6) Nextcloud    - Nextcloud file server stack"
   echo "  7) Backup       - Dedicated backup server (runs all backup scripts/crons)"
-  select role in Base Mail CyberPanel Web WebCyberPanel Nextcloud Backup; do
-    if [[ -n "$role" ]]; then
-      SERVER_ROLE="$role"
-      export SERVER_ROLE
-      break
-    fi
+  select opt in Base Mail CyberPanel Web WebCyberPanel Nextcloud Backup; do
+    case $REPLY in
+      1) SERVER_ROLE="Base" ;;
+      2) SERVER_ROLE="Mail" ;;
+      3) SERVER_ROLE="CyberPanel" ;;
+      4) SERVER_ROLE="Web" ;;
+      5) SERVER_ROLE="WebCyberPanel" ;;
+      6) SERVER_ROLE="Nextcloud" ;;
+      7) SERVER_ROLE="Backup" ;;
+      *) continue ;;
+    esac
+    export SERVER_ROLE
+    break
   done
 fi
 
