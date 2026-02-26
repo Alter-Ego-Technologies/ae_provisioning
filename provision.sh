@@ -409,19 +409,16 @@ provision_webstack() {
     crontab -l | grep -Ev 'docker-clean\.sh|docker system prune|docker volume prune' | crontab -
   fi
 
+  mkdir -p /mnt/web/webstack
+  chown $ADMIN_USER:$ADMIN_USER /mnt/web/webstack
   mkdir -p /opt/webstack
   chown $ADMIN_USER:$ADMIN_USER /opt/webstack
-  mkdir -p /mnt/webstack
-  chown $ADMIN_USER:$ADMIN_USER /mnt/webstack
-  mount --bind /opt/webstack /mnt/web/webstack
-  
-  # Add fstab entry if not already present
-  if ! grep -q "/opt/webstack" /etc/fstab; then
-    echo "/opt/webstack /mnt/web/webstack none bind 0 0" >> /etc/fstab
-  fi
-  
-  ok "WEBSTACK role provisioning complete"
-}
+  mount --bind /mnt/web/webstack /opt/webstack
+  if ! grep -q "/mnt/web/webstack" /etc/fstab; then
+    echo "/mnt/web/webstack /opt/webstack none bind 0 0" >> /etc/fstab
+  fi  
+    ok "WEBSTACK role provisioning complete"
+  }
 
 # ---------------------------------------------------------
 # INSTALL SYSTEMD UNITS
@@ -496,6 +493,13 @@ provision_cyberpanel() {
   ufw allow 53/tcp     # DNS
   ufw allow 53/udp     # DNS
   ufw allow 3306/tcp   # MariaDB/MySQL (optional, restrict as needed)
+
+  mkdir -p /mnt/web/cyberpanel
+  chown cyberpanel:cyberpanel /mnt/web/cyberpanel
+  mount --bind /mnt/web/cyberpanel /home
+  if ! grep -q "/mnt/web/cyberpanel" /etc/fstab; then
+    echo "/mnt/web/cyberpanel /home none bind 0 0" >> /etc/fstab
+  fi
 
   # Install or update CyberPanel without affecting user data
   if command -v cyberpanel >/dev/null 2>&1 || [ -d "/usr/local/CyberCP" ]; then
