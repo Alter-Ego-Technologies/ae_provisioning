@@ -10,7 +10,13 @@ REPO_PATH="${SCRIPT_DIR}"
 
 if [[ -z "${SERVER_ROLE:-}" ]]; then
   echo "Select server role to provision:"
-  select opt in Base Mail CyberPanel Web WebCyberPanel Nextcloud Backup; do
+  select opt in Base 
+                Mail 
+                CyberPanel 
+                Web 
+                WebCyberPanel 
+                Nextcloud 
+                Backup; do
     case $REPLY in
       1) SERVER_ROLE="Base" ;;
       2) SERVER_ROLE="Mail" ;;
