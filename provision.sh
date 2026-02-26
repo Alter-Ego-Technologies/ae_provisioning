@@ -9,21 +9,27 @@ REPO_PATH="${SCRIPT_DIR}"
 # Interactive prompt for server role if not set
 
 if [[ -z "${SERVER_ROLE:-}" ]]; then
-  echo "Select server role to provision:"
-  select opt in Base\nMail\nCyberPanel\nWeb\nWebCyberPanel\nNextcloud\nBackup; do
-    case $REPLY in
-      1) SERVER_ROLE="Base" ;;
-      2) SERVER_ROLE="Mail" ;;
-      3) SERVER_ROLE="CyberPanel" ;;
-      4) SERVER_ROLE="Web" ;;
-      5) SERVER_ROLE="WebCyberPanel" ;;
-      6) SERVER_ROLE="Nextcloud" ;;
-      7) SERVER_ROLE="Backup" ;;
-      *) continue ;;
-    esac
-    export SERVER_ROLE
-    break
-  done
+  echo -e "${CYAN}Select server role to provision:${RESET}"
+  echo -e "  ${GREEN}1)${RESET} ${BOLD}Base        ${RESET}      - Minimal system setup, no app stack"
+  echo -e "  ${GREEN}2)${RESET} ${BOLD}Mail        ${RESET}      - Mail server (Mailcow, postfix, dovecot, etc.)"
+  echo -e "  ${GREEN}3)${RESET} ${BOLD}CyberPanel  ${RESET}      - CyberPanel-managed web hosting (web, users, DBs)"
+  echo -e "  ${GREEN}4)${RESET} ${BOLD}Web         ${RESET}      - Generic web server / Standalone web stack (nginx/apache, certs, etc.)"
+  echo -e "  ${GREEN}5)${RESET} ${BOLD}WebCyberPanel${RESET}     - Both CyberPanel and custom web stack together"
+  echo -e "  ${GREEN}6)${RESET} ${BOLD}Nextcloud   ${RESET}      - Nextcloud file server stack"
+  echo -e "  ${GREEN}7)${RESET} ${BOLD}Backup      ${RESET}      - Dedicated backup server (runs all backup scripts/crons)"
+  echo
+  read -p "Enter number [1-7]: " REPLY
+  case $REPLY in
+    1) SERVER_ROLE="Base" ;;
+    2) SERVER_ROLE="Mail" ;;
+    3) SERVER_ROLE="CyberPanel" ;;
+    4) SERVER_ROLE="Web" ;;
+    5) SERVER_ROLE="WebCyberPanel" ;;
+    6) SERVER_ROLE="Nextcloud" ;;
+    7) SERVER_ROLE="Backup" ;;
+    *) echo "Invalid selection"; exit 1 ;;
+  esac
+  export SERVER_ROLE
 fi
 
 # Prompt for hostname if not set or if user wants to edit
