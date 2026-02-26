@@ -10,13 +10,6 @@ REPO_PATH="${SCRIPT_DIR}"
 
 if [[ -z "${SERVER_ROLE:-}" ]]; then
   echo "Select server role to provision:"
-  echo "  1) Base         - Minimal system setup, no app stack"
-  echo "  2) Mail         - Mail server (Mailcow, postfix, dovecot, etc.)"
-  echo "  3) CyberPanel   - CyberPanel-managed web hosting (web, users, DBs)"
-  echo "  4) Web          - Generic web server / Standalone web stack (nginx/apache, certs, etc.)"
-  echo "  5) WebCyberPanel- Both CyberPanel and custom web stack together"
-  echo "  6) Nextcloud    - Nextcloud file server stack"
-  echo "  7) Backup       - Dedicated backup server (runs all backup scripts/crons)"
   select opt in Base Mail CyberPanel Web WebCyberPanel Nextcloud Backup; do
     case $REPLY in
       1) SERVER_ROLE="Base" ;;
