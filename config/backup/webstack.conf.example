@@ -4,4 +4,4 @@ WEB_PRI=webadmin.example.com
 WEB_SSH_USER=root
 WEB_SSH_PORT=22
 WEB_DATA_SRC=/mnt/web-files
-WEB_DATA_DST=/mnt/Backups/web/data
+WEB_DATA_DST=/mnt/Backups/webstack

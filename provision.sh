@@ -20,7 +20,7 @@ if [[ -z "${SERVER_ROLE:-}" ]]; then
   echo -e "  ${GREEN}1)${RESET} ${BOLD}Base ${RESET} - Minimal system setup, no app stack"
   echo -e "  ${GREEN}2)${RESET} ${BOLD}Mail ${RESET} - Mail server (Mailcow, postfix, dovecot, etc.)"
   echo -e "  ${GREEN}3)${RESET} ${BOLD}CyberPanel ${RESET} - CyberPanel-managed web hosting (web, users, DBs)"
-  echo -e "  ${GREEN}4)${RESET} ${BOLD}Web ${RESET} - Generic web server / Standalone web stack (nginx/apache, certs, etc.)"
+  echo -e "  ${GREEN}4)${RESET} ${BOLD}Custom Web Stack ${RESET} - Generic web server / Standalone web stack (nginx/apache, certs, etc.)"
   echo -e "  ${GREEN}5)${RESET} ${BOLD}WebCyberPanel${RESET} - Both CyberPanel and custom web stack together"
   echo -e "  ${GREEN}6)${RESET} ${BOLD}Nextcloud ${RESET} - Nextcloud file server stack"
   echo -e "  ${GREEN}7)${RESET} ${BOLD}Backup ${RESET} - Dedicated backup server (runs all backup scripts/crons)"
@@ -32,7 +32,7 @@ if [[ -z "${SERVER_ROLE:-}" ]]; then
     1) SERVER_ROLE="Base" ;;
     2) SERVER_ROLE="Mail" ;;
     3) SERVER_ROLE="CyberPanel" ;;
-    4) SERVER_ROLE="Web" ;;
+    4) SERVER_ROLE="WebStack" ;;
     5) SERVER_ROLE="WebCyberPanel" ;;
     6) SERVER_ROLE="Nextcloud" ;;
     7) SERVER_ROLE="Backup" ;;
@@ -268,7 +268,7 @@ chmod 0644 /etc/ops-monitor/role
 provision_backup() {
     BACKUP_ROOT="/mnt/Backups"
     # 3a. Copy example configs to runtime locations if missing
-    for service in nextcloud mailcow cyberpanel web; do
+    for service in nextcloud mailcow cyberpanel webstack; do
       example_conf="$REPO_PATH/config/backup/${service}.conf.example"
       dest_conf="$BACKUP_ROOT/${service}/${service}.conf"
       mkdir -p "$BACKUP_ROOT/$service"
@@ -284,7 +284,7 @@ provision_backup() {
   mkdir -p $BACKUP_ROOT/nextcloud/{data,sql}
   mkdir -p $BACKUP_ROOT/mailcow/{backups}
   mkdir -p $BACKUP_ROOT/cyberpanel/{home,db}
-  mkdir -p $BACKUP_ROOT/web/{data}
+  mkdir -p $BACKUP_ROOT/webstack
 
   # 2. Install required tools
   apt-get update -y
@@ -294,13 +294,13 @@ provision_backup() {
   install -m 0755 "$REPO_PATH/scripts/backup/sync_nextcloud.sh" $BACKUP_ROOT/scripts/sync_nextcloud.sh
   install -m 0755 "$REPO_PATH/scripts/backup/sync_mailcow.sh" $BACKUP_ROOT/scripts/sync_mailcow.sh
   install -m 0755 "$REPO_PATH/scripts/backup/sync_cyberpanel.sh" $BACKUP_ROOT/scripts/sync_cyberpanel.sh
-  install -m 0755 "$REPO_PATH/scripts/backup/sync_web.sh" $BACKUP_ROOT/scripts/sync_web.sh
+  install -m 0755 "$REPO_PATH/scripts/backup/sync_webstack.sh" $BACKUP_ROOT/scripts/sync_webstack.sh
 
   # Also install to /usr/local/bin for global access
   install -m 0755 "$REPO_PATH/scripts/backup/sync_nextcloud.sh" /usr/local/bin/sync_nextcloud.sh
   install -m 0755 "$REPO_PATH/scripts/backup/sync_mailcow.sh" /usr/local/bin/sync_mailcow.sh
   install -m 0755 "$REPO_PATH/scripts/backup/sync_cyberpanel.sh" /usr/local/bin/sync_cyberpanel.sh
-  install -m 0755 "$REPO_PATH/scripts/backup/sync_web.sh" /usr/local/bin/sync_web.sh
+  install -m 0755 "$REPO_PATH/scripts/backup/sync_webstack.sh" /usr/local/bin/sync_webstack.sh
 
   ok "BACKUP role provisioning complete"
 
@@ -316,8 +316,8 @@ PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 15 2 * * * ${ADMIN_USER} /mnt/Backups/scripts/sync_nextcloud.sh >> /mnt/Backups/logs/nextcloud.log 2>&1
 # CyberPanel: nightly at 3:15
 15 3 * * * ${ADMIN_USER} /mnt/Backups/scripts/sync_cyberpanel.sh >> /mnt/Backups/logs/cyberpanel.log 2>&1
-# Web: nightly at 4:15
-15 4 * * * ${ADMIN_USER} /mnt/Backups/scripts/sync_web.sh >> /mnt/Backups/logs/web.log 2>&1
+# WebStack: nightly at 4:15
+15 4 * * * ${ADMIN_USER} /mnt/Backups/scripts/sync_webstack.sh >> /mnt/Backups/logs/webstack.log 2>&1
 EOF
   chmod 0644 /etc/cron.d/backup-maint
   ok "Backup cron schedule installed"
