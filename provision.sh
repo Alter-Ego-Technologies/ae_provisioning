@@ -24,9 +24,11 @@ if [[ -z "${SERVER_ROLE:-}" ]]; then
   echo -e "  ${GREEN}5)${RESET} ${BOLD}WebCyberPanel${RESET} - Both CyberPanel and custom web stack together"
   echo -e "  ${GREEN}6)${RESET} ${BOLD}Nextcloud ${RESET} - Nextcloud file server stack"
   echo -e "  ${GREEN}7)${RESET} ${BOLD}Backup ${RESET} - Dedicated backup server (runs all backup scripts/crons)"
+  echo -e "  ${RED}0)${RESET} Quit"
   echo
-  read -p "Enter number [1-7]: " REPLY
+    read -p "Enter number [0-7]: " REPLY
   case $REPLY in
+      0) echo "Quitting."; exit 0 ;;
     1) SERVER_ROLE="Base" ;;
     2) SERVER_ROLE="Mail" ;;
     3) SERVER_ROLE="CyberPanel" ;;
