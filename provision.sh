@@ -1,5 +1,6 @@
 #!/bin/bash
 set -e
+clear
 
 # Resolve repo root robustly (works whether provision.sh is in repo root or inside AEP/)
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
