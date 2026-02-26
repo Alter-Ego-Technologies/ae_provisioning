@@ -9,15 +9,15 @@ REPO_PATH="${SCRIPT_DIR}"
 # Interactive prompt for server role if not set
 
 if [[ -z "${SERVER_ROLE:-}" ]]; then
-  echo -e "${CYAN}Select server role to provision:${RESET}"
-  echo -e "  ${GREEN}1)${RESET} ${BOLD}Base        ${RESET}      - Minimal system setup, no app stack"
-  echo -e "  ${GREEN}2)${RESET} ${BOLD}Mail        ${RESET}      - Mail server (Mailcow, postfix, dovecot, etc.)"
-  echo -e "  ${GREEN}3)${RESET} ${BOLD}CyberPanel  ${RESET}      - CyberPanel-managed web hosting (web, users, DBs)"
-  echo -e "  ${GREEN}4)${RESET} ${BOLD}Web         ${RESET}      - Generic web server / Standalone web stack (nginx/apache, certs, etc.)"
-  echo -e "  ${GREEN}5)${RESET} ${BOLD}WebCyberPanel${RESET}     - Both CyberPanel and custom web stack together"
-  echo -e "  ${GREEN}6)${RESET} ${BOLD}Nextcloud   ${RESET}      - Nextcloud file server stack"
-  echo -e "  ${GREEN}7)${RESET} ${BOLD}Backup      ${RESET}      - Dedicated backup server (runs all backup scripts/crons)"
-  echo
+  printf "%b\n" "${CYAN}Select server role to provision:${RESET}"
+  printf "%b\n" "  ${GREEN}1)${RESET} ${BOLD}Base        ${RESET}      - Minimal system setup, no app stack"
+  printf "%b\n" "  ${GREEN}2)${RESET} ${BOLD}Mail        ${RESET}      - Mail server (Mailcow, postfix, dovecot, etc.)"
+  printf "%b\n" "  ${GREEN}3)${RESET} ${BOLD}CyberPanel  ${RESET}      - CyberPanel-managed web hosting (web, users, DBs)"
+  printf "%b\n" "  ${GREEN}4)${RESET} ${BOLD}Web         ${RESET}      - Generic web server / Standalone web stack (nginx/apache, certs, etc.)"
+  printf "%b\n" "  ${GREEN}5)${RESET} ${BOLD}WebCyberPanel${RESET}     - Both CyberPanel and custom web stack together"
+  printf "%b\n" "  ${GREEN}6)${RESET} ${BOLD}Nextcloud   ${RESET}      - Nextcloud file server stack"
+  printf "%b\n" "  ${GREEN}7)${RESET} ${BOLD}Backup      ${RESET}      - Dedicated backup server (runs all backup scripts/crons)"
+  printf "\n"
   read -p "Enter number [1-7]: " REPLY
   case $REPLY in
     1) SERVER_ROLE="Base" ;;
@@ -54,7 +54,12 @@ LOG_FILE="${LOG_FILE:-/var/log/provision.log}"
 
 # Colors and emoji helpers (disable with NO_COLOR=1 or when not a TTY)
 if [[ -t 1 && -z "${NO_COLOR:-}" ]]; then
-  CYAN="\033[1;36m"; GREEN="\033[1;32m"; YELLOW="\033[1;33m"; RED="\033[1;31m"; BOLD="\033[1m"; RESET="\033[0m"
+  CYAN="$(tput setaf 6 2>/dev/null || echo '\033[1;36m')"
+  GREEN="$(tput setaf 2 2>/dev/null || echo '\033[1;32m')"
+  YELLOW="$(tput setaf 3 2>/dev/null || echo '\033[1;33m')"
+  RED="$(tput setaf 1 2>/dev/null || echo '\033[1;31m')"
+  BOLD="$(tput bold 2>/dev/null || echo '\033[1m')"
+  RESET="$(tput sgr0 2>/dev/null || echo '\033[0m')"
 else
   CYAN=""; GREEN=""; YELLOW=""; RED=""; BOLD=""; RESET=""
 fi
