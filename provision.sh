@@ -409,6 +409,17 @@ provision_webstack() {
     crontab -l | grep -Ev 'docker-clean\.sh|docker system prune|docker volume prune' | crontab -
   fi
 
+  mkdir -p /opt/webstack
+  chown $ADMIN_USER:$ADMIN_USER /opt/webstack
+  mkdir -p /mnt/webstack
+  chown $ADMIN_USER:$ADMIN_USER /mnt/webstack
+  mount --bind /opt/webstack /mnt/web/webstack
+  
+  # Add fstab entry if not already present
+  if ! grep -q "/opt/webstack" /etc/fstab; then
+    echo "/opt/webstack /mnt/web/webstack none bind 0 0" >> /etc/fstab
+  fi
+  
   ok "WEBSTACK role provisioning complete"
 }
 
