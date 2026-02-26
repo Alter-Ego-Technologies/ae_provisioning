@@ -393,10 +393,10 @@ fi
   ok "MAIL role provisioning complete"
 }
 
-provision_web() {
-  step "Running Standalone WEB role provisioning"
+provision_webstack() {
+  step "Web stack provisioning"
 
-  # Web firewall ports (base already allows SSH_PORT)
+  # Web stack firewall ports (base already allows SSH_PORT)
   step "Allowing HTTP/HTTPS/SMTP through UFW"
   ufw allow 80/tcp
   ufw allow 443/tcp
@@ -409,7 +409,7 @@ provision_web() {
     crontab -l | grep -Ev 'docker-clean\.sh|docker system prune|docker volume prune' | crontab -
   fi
 
-  ok "WEB role provisioning complete"
+  ok "WEBSTACK role provisioning complete"
 }
 
 # ---------------------------------------------------------
@@ -507,9 +507,9 @@ provision_cyberpanel() {
 
 case "$SERVER_ROLE" in
   Mail) provision_mail ;;
-  Web)  provision_web ;;
+  WebStack)  provision_webstack ;;
   CyberPanel) provision_cyberpanel ;;
-  WebCyberPanel) provision_web; provision_cyberpanel ;;
+  WebCyberPanel) provision_webstack; provision_cyberpanel ;;
   Nextcloud) provision_nextcloud ;;
   Backup) provision_backup ;;
   Base) : ;;
