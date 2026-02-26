@@ -54,12 +54,12 @@ LOG_FILE="${LOG_FILE:-/var/log/provision.log}"
 
 # Colors and emoji helpers (disable with NO_COLOR=1 or when not a TTY)
 if [[ -t 1 && -z "${NO_COLOR:-}" ]]; then
-  CYAN="$(tput setaf 6 2>/dev/null || echo '\033[1;36m')"
-  GREEN="$(tput setaf 2 2>/dev/null || echo '\033[1;32m')"
-  YELLOW="$(tput setaf 3 2>/dev/null || echo '\033[1;33m')"
-  RED="$(tput setaf 1 2>/dev/null || echo '\033[1;31m')"
-  BOLD="$(tput bold 2>/dev/null || echo '\033[1m')"
-  RESET="$(tput sgr0 2>/dev/null || echo '\033[0m')"
+  CYAN="\033[36m"
+  GREEN="\033[32m"
+  YELLOW="\033[33m"
+  RED="\033[31m"
+  BOLD="\033[1m"
+  RESET="\033[0m"
 else
   CYAN=""; GREEN=""; YELLOW=""; RED=""; BOLD=""; RESET=""
 fi
