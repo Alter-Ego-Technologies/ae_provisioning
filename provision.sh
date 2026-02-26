@@ -8,7 +8,6 @@ REPO_PATH="${SCRIPT_DIR}"
 
 # Interactive prompt for server role if not set
 
-
 if [[ -z "${SERVER_ROLE:-}" ]]; then
   echo "Select server role to provision:"
   echo "  1) Base         - Minimal system setup, no app stack"
@@ -19,7 +18,7 @@ if [[ -z "${SERVER_ROLE:-}" ]]; then
   echo "  6) Nextcloud    - Nextcloud file server stack"
   echo "  7) Backup       - Dedicated backup server (runs all backup scripts/crons)"
   
-  select role in Base Mail Web CyberPanel WebCyberPanel Nextcloud Backup; do
+  select role in Base Mail CyberPanel Web WebCyberPanel Nextcloud Backup; do
     if [[ -n "$role" ]]; then
       SERVER_ROLE="$role"
       export SERVER_ROLE
