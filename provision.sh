@@ -490,7 +490,8 @@ provision_cyberpanel() {
   if command -v cyberpanel >/dev/null 2>&1 || [ -d "/usr/local/CyberCP" ]; then
     step "Updating CyberPanel (safe upgrade, data preserved)"
     wget -O /tmp/cyberpanel_install.sh https://cyberpanel.net/install.sh
-    bash /tmp/cyberpanel_install.sh --upgrade
+    # Suppress only 'Unknown argument...' and help text
+    bash /tmp/cyberpanel_install.sh --upgrade 2> >(grep -v "Unknown argument" | grep -v "Usage:" | grep -v "CyberPanel Installer Script Help" >&2)
     rm -f /tmp/cyberpanel_install.sh
     ok "CyberPanel updated (user data preserved)"
   else
