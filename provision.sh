@@ -17,7 +17,6 @@ if [[ -z "${SERVER_ROLE:-}" ]]; then
   echo "  5) WebCyberPanel- Both CyberPanel and custom web stack together"
   echo "  6) Nextcloud    - Nextcloud file server stack"
   echo "  7) Backup       - Dedicated backup server (runs all backup scripts/crons)"
-  
   select role in Base Mail CyberPanel Web WebCyberPanel Nextcloud Backup; do
     if [[ -n "$role" ]]; then
       SERVER_ROLE="$role"
