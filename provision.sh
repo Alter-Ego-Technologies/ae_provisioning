@@ -491,7 +491,7 @@ provision_cyberpanel() {
     step "Updating CyberPanel (safe upgrade, data preserved)"
     wget -O /tmp/cyberpanel_install.sh https://cyberpanel.net/install.sh
     # Suppress only 'Unknown argument...' and help text
-    bash /tmp/cyberpanel_install.sh --upgrade 2> >(grep -v "Unknown argument" | grep -v "Usage:" | grep -v "CyberPanel Installer Script Help" >&2)
+    bash /tmp/cyberpanel_install.sh --upgrade 2>&1 | grep -v "Unknown argument" | grep -v "Usage:" | grep -v "CyberPanel Installer Script Help"
     rm -f /tmp/cyberpanel_install.sh
     ok "CyberPanel updated (user data preserved)"
   else
