@@ -5,6 +5,44 @@ set -e
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_PATH="${SCRIPT_DIR}"
 
+
+# Interactive prompt for server role if not set
+
+
+if [[ -z "${SERVER_ROLE:-}" ]]; then
+  echo "Select server role to provision:"
+  echo "  1) Base         - Minimal system setup, no app stack"
+  echo "  2) Mail         - Mail server (Mailcow, postfix, dovecot, etc.)"
+  echo "  3) CyberPanel   - CyberPanel-managed web hosting (web, users, DBs)"
+  echo "  4) Web          - Generic web server / Standalone web stack (nginx/apache, certs, etc.)"
+  echo "  5) WebCyberPanel- Both CyberPanel and custom web stack together"
+  echo "  6) Nextcloud    - Nextcloud file server stack"
+  echo "  7) Backup       - Dedicated backup server (runs all backup scripts/crons)"
+  
+  select role in Base Mail Web CyberPanel WebCyberPanel Nextcloud Backup; do
+    if [[ -n "$role" ]]; then
+      SERVER_ROLE="$role"
+      export SERVER_ROLE
+      break
+    fi
+  done
+fi
+
+# Prompt for hostname if not set or if user wants to edit
+CURRENT_HOSTNAME=$(hostname)
+if [[ -z "${HOSTNAME_OVERRIDE:-}" ]]; then
+  echo "Current hostname is: $CURRENT_HOSTNAME"
+  read -p "Enter hostname to set (leave blank to keep current): " NEW_HOSTNAME
+  if [[ -n "$NEW_HOSTNAME" ]]; then
+    hostnamectl set-hostname "$NEW_HOSTNAME"
+    export HOSTNAME_OVERRIDE="$NEW_HOSTNAME"
+    echo "Hostname set to $NEW_HOSTNAME"
+  else
+    export HOSTNAME_OVERRIDE="$CURRENT_HOSTNAME"
+    echo "Keeping current hostname: $CURRENT_HOSTNAME"
+  fi
+fi
+
 # Configuration from environment or defaults
 ADMIN_USER="${ADMIN_USER:-gabe}"
 SSH_PORT="${SSH_PORT:-2222}"
@@ -461,13 +499,13 @@ provision_cyberpanel() {
 }
 
 case "$SERVER_ROLE" in
-  mail) provision_mail ;;
-  web)  provision_web ;;
-  cyberpanel) provision_cyberpanel ;;
-  web_cyberpanel) provision_web; provision_cyberpanel ;;
-  nextcloud) provision_nextcloud ;;
-  backup) provision_backup ;;
-  base) : ;;
+  Mail) provision_mail ;;
+  Web)  provision_web ;;
+  CyberPanel) provision_cyberpanel ;;
+  WebCyberPanel) provision_web; provision_cyberpanel ;;
+  Nextcloud) provision_nextcloud ;;
+  Backup) provision_backup ;;
+  Base) : ;;
   *)    warn "Unknown SERVER_ROLE='$SERVER_ROLE' (no role-specific steps run)" ;;
 esac
 
