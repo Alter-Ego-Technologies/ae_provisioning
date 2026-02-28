@@ -8,4 +8,7 @@ flock -n 9 || exit 0
 CONF_PATH="/mnt/Backups/mailcow/mailcow.conf"
 [ -f "$CONF_PATH" ] && source "$CONF_PATH"
 
-rsync -aHAX --no-group --delete -e "ssh -p ${MC_SSH_PORT}" ${MC_SSH_USER}@${MC_PRI}:${MC_BACKUP_SRC}/ ${MC_BACKUP_DST}/
+rsync -aHAX --numeric-ids --no-group --delete \
+	-e "ssh -p ${MC_SSH_PORT} -i /home/gabe/.ssh/id_ed25519" \
+	--rsync-path="sudo /usr/bin/rsync" \
+	${MC_SSH_USER}@${MC_PRI}:${MC_BACKUP_SRC}/ ${MC_BACKUP_DST}/
