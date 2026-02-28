@@ -293,6 +293,8 @@ provision_backup() {
   mkdir -p $BACKUP_ROOT/cyberpanel/{home,db}
   mkdir -p $BACKUP_ROOT/CustomApps/{data,db}
 
+  chmod 700 -R $BACKUP_ROOT
+
   # 2. Install required tools
   apt-get update -y
   apt-get install -y rsync mariadb-client curl unzip
