@@ -409,13 +409,13 @@ provision_customapps() {
     crontab -l | grep -Ev 'docker-clean\.sh|docker system prune|docker volume prune' | crontab -
   fi
 
-  mkdir -p /mnt/web/customapps
-  chown $ADMIN_USER:$ADMIN_USER /mnt/web/customapps
-  mkdir -p /opt/customapps
-  chown $ADMIN_USER:$ADMIN_USER /opt/customapps
-  mount --bind /mnt/web/customapps /opt/customapps
-  if ! grep -q "/mnt/web/customapps" /etc/fstab; then
-    echo "/mnt/web/customapps /opt/customapps none bind 0 0" >> /etc/fstab
+  mkdir -p /mnt/web/CustomApps
+  chown $ADMIN_USER:$ADMIN_USER /mnt/web/CustomApps
+  mkdir -p /opt/CustomApps
+  chown $ADMIN_USER:$ADMIN_USER /opt/CustomApps
+  mount --bind /mnt/web/CustomApps /opt/CustomApps
+  if ! grep -q "/mnt/web/CustomApps" /etc/fstab; then
+    echo "/mnt/web/CustomApps /opt/CustomApps none bind 0 0" >> /etc/fstab
   fi  
     ok "Custom Apps & Services role provisioning complete"
   }
