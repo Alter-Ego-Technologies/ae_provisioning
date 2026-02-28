@@ -494,25 +494,25 @@ provision_cyberpanel() {
   ufw allow 53/udp     # DNS
   ufw allow 3306/tcp   # MariaDB/MySQL (optional, restrict as needed)
 
-  mkdir -p /mnt/web/cyberpanel
-  chown cyberpanel:cyberpanel /mnt/web/cyberpanel
+  mkdir -p /mnt/web/Websites
+  chown cyberpanel:cyberpanel /mnt/web/Websites
 
-  # Migrate user home directories from /home to /mnt/web/cyberpanel if not already present
-  step "Migrating user home directories to /mnt/web/cyberpanel before bind-mounting"
+  # Migrate user home directories from /home to /mnt/web/Websites if not already present
+  step "Migrating user home directories to /mnt/web/Websites before bind-mounting"
   for d in /home/*; do
-    # Only migrate if it's a directory, not a symlink, and not already present in /mnt/web/cyberpanel
+    # Only migrate if it's a directory, not a symlink, and not already present in /mnt/web/Websites
     if [ -d "$d" ] && [ ! -L "$d" ]; then
       userdir="$(basename "$d")"
-      if [ ! -e "/mnt/web/cyberpanel/$userdir" ]; then
-        step "Moving /home/$userdir to /mnt/web/cyberpanel/$userdir"
-        mv "$d" "/mnt/web/cyberpanel/$userdir"
+      if [ ! -e "/mnt/web/Websites/$userdir" ]; then
+        step "Moving /home/$userdir to /mnt/web/Websites/$userdir"
+        mv "$d" "/mnt/web/Websites/$userdir"
       fi
     fi
   done
 
-  mount --bind /mnt/web/cyberpanel /home
-  if ! grep -q "/mnt/web/cyberpanel" /etc/fstab; then
-    echo "/mnt/web/cyberpanel /home none bind 0 0" >> /etc/fstab
+  mount --bind /mnt/web/Websites /home
+  if ! grep -q "/mnt/web/Websites" /etc/fstab; then
+    echo "/mnt/web/Websites /home none bind 0 0" >> /etc/fstab
   fi
 
   # Install or update CyberPanel without affecting user data
