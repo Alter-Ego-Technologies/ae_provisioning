@@ -496,6 +496,20 @@ provision_cyberpanel() {
 
   mkdir -p /mnt/web/cyberpanel
   chown cyberpanel:cyberpanel /mnt/web/cyberpanel
+
+  # Migrate user home directories from /home to /mnt/web/cyberpanel if not already present
+  step "Migrating user home directories to /mnt/web/cyberpanel before bind-mounting"
+  for d in /home/*; do
+    # Only migrate if it's a directory, not a symlink, and not already present in /mnt/web/cyberpanel
+    if [ -d "$d" ] && [ ! -L "$d" ]; then
+      userdir="$(basename "$d")"
+      if [ ! -e "/mnt/web/cyberpanel/$userdir" ]; then
+        step "Moving /home/$userdir to /mnt/web/cyberpanel/$userdir"
+        mv "$d" "/mnt/web/cyberpanel/$userdir"
+      fi
+    fi
+  done
+
   mount --bind /mnt/web/cyberpanel /home
   if ! grep -q "/mnt/web/cyberpanel" /etc/fstab; then
     echo "/mnt/web/cyberpanel /home none bind 0 0" >> /etc/fstab
