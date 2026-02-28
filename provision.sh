@@ -289,7 +289,7 @@ provision_backup() {
   # 1. Ensure backup directory structure
   mkdir -p $BACKUP_ROOT/{scripts,logs}
   mkdir -p $BACKUP_ROOT/nextcloud/{data,sql}
-  mkdir -p $BACKUP_ROOT/mailcow/{backups}
+  mkdir -p $BACKUP_ROOT/mailcow/backups
   mkdir -p $BACKUP_ROOT/cyberpanel/{home,db}
   mkdir -p $BACKUP_ROOT/CustomApps/{data,db}
 
