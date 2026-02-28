@@ -13,7 +13,8 @@ CONF_PATH="/mnt/Backups/CustomApps/CustomApps.conf"
 # Ensure destination exists
 mkdir -p "$CUSTOMAPPS_DATA_DST"
 
- # Rsync CustomApps files
-rsync -aHAX --delete -e "ssh -p ${CUSTOMAPPS_SSH_PORT}" ${CUSTOMAPPS_SSH_USER}@${CUSTOMAPPS_PRI}:${CUSTOMAPPS_DATA_SRC}/ ${CUSTOMAPPS_DATA_DST}/
+
+# Rsync CustomApps files (do not preserve group to avoid chgrp errors)
+rsync -aHAX --no-group --delete -e "ssh -p ${CUSTOMAPPS_SSH_PORT}" ${CUSTOMAPPS_SSH_USER}@${CUSTOMAPPS_PRI}:${CUSTOMAPPS_DATA_SRC}/ ${CUSTOMAPPS_DATA_DST}/
 
 echo "[INFO] CustomApps files backup complete: $STAMP"
