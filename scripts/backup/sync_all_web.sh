@@ -1,13 +1,13 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Wrapper to run both webstack and CyberPanel backup scripts in sequence
+# Wrapper to run both custom apps and CyberPanel backup scripts in sequence
 # Logs output and errors for each step
 
 LOG_DIR="/mnt/Backups/logs"
 mkdir -p "$LOG_DIR"
 STAMP=$(date +%F_%H%M%S)
-LOG_FILE="$LOG_DIR/all_webstack_${STAMP}.log"
+LOG_FILE="$LOG_DIR/all_customapps_${STAMP}.log"
 
 run_backup() {
   local script="$1"
@@ -21,7 +21,7 @@ run_backup() {
   echo | tee -a "$LOG_FILE"
 }
 
-run_backup "/mnt/Backups/scripts/sync_webstack.sh" "WebStack"
+run_backup "/mnt/Backups/scripts/sync_apps.sh" "Custom Apps"
 run_backup "/mnt/Backups/scripts/sync_cyberpanel.sh" "CyberPanel"
 
 echo "All webstack-related backups complete. See $LOG_FILE for details."

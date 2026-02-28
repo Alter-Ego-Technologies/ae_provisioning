@@ -1,0 +1,19 @@
+#!/usr/bin/env bash
+set -e
+mountpoint -q /mnt/Backups || { echo "ERROR: /mnt/Backups not mounted"; exit 1; }
+exec 9>/tmp/customapps-backup.lock
+flock -n 9 || exit 0
+
+STAMP=$(date +%F_%H%M%S)
+
+ # Source config from /mnt/Backups/CustomApps/CustomApps.conf if present
+CONF_PATH="/mnt/Backups/CustomApps/CustomApps.conf"
+[ -f "$CONF_PATH" ] && source "$CONF_PATH"
+
+# Ensure destination exists
+mkdir -p "$CUSTOMAPPS_DATA_DST"
+
+ # Rsync CustomApps files
+rsync -aHAX --delete -e "ssh -p ${CUSTOMAPPS_SSH_PORT}" ${CUSTOMAPPS_SSH_USER}@${CUSTOMAPPS_PRI}:${CUSTOMAPPS_DATA_SRC}/ ${CUSTOMAPPS_DATA_DST}/
+
+echo "[INFO] CustomApps files backup complete: $STAMP"
