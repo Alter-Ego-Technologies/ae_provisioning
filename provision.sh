@@ -284,7 +284,7 @@ provision_backup() {
   mkdir -p $BACKUP_ROOT/nextcloud/{data,sql}
   mkdir -p $BACKUP_ROOT/mailcow/{backups}
   mkdir -p $BACKUP_ROOT/cyberpanel/{home,db}
-  mkdir -p $BACKUP_ROOT/customapps
+  mkdir -p $BACKUP_ROOT/CustomApps
 
   # 2. Install required tools
   apt-get update -y
