@@ -3,22 +3,6 @@ set -e
 clear
 
 # Resolve repo root robustly (works whether provision.sh is in repo root or inside AEP/)
-############################################################
-# Ensure main data volume is in /etc/fstab and mounted
-VOLUME_DEVICE="${VOLUME_DEVICE:-/dev/sdb1}"   # Change default as needed
-VOLUME_MOUNTPOINT="/mnt/web"
-VOLUME_FSTAB_LINE="${VOLUME_DEVICE}   ${VOLUME_MOUNTPOINT}   ext4   defaults   0 2"
-
-if ! grep -qE "^${VOLUME_DEVICE}[[:space:]]+${VOLUME_MOUNTPOINT}[[:space:]]" /etc/fstab; then
-  echo "$VOLUME_FSTAB_LINE" >> /etc/fstab
-  step "Added main volume to /etc/fstab: $VOLUME_FSTAB_LINE"
-else
-  ok "Main volume already present in /etc/fstab"
-fi
-
-# Ensure mountpoint exists and is mounted
-mkdir -p "$VOLUME_MOUNTPOINT"
-mountpoint -q "$VOLUME_MOUNTPOINT" || mount "$VOLUME_MOUNTPOINT"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_PATH="${SCRIPT_DIR}"
 
@@ -49,6 +33,11 @@ if [[ -z "${SERVER_ROLE:-}" ]]; then
     2) SERVER_ROLE="Mail" ;;
     3) SERVER_ROLE="CyberPanel" ;;
     4) SERVER_ROLE="CustomApps" ;;
+    ############################################################
+    # Ensure main data volume is mounted (edit device as needed)
+    # Example fstab entry for main volume:
+    # /dev/sdb1   /mnt/web   ext4   defaults   0 2
+    ############################################################
     5) SERVER_ROLE="WebCyberPanel" ;;
     6) SERVER_ROLE="Nextcloud" ;;
     7) SERVER_ROLE="Backup" ;;
