@@ -538,7 +538,7 @@ case "$SERVER_ROLE" in
   Mail) provision_mail ;;
   CustomApps)  provision_customapps ;;
   CyberPanel) provision_cyberpanel ;;
-  WebCyberPanel) provision_webstack; provision_cyberpanel ;;
+  WebCyberPanel) provision_customapps; provision_cyberpanel ;;
   Nextcloud) provision_nextcloud ;;
   Backup) provision_backup ;;
   Base) : ;;
