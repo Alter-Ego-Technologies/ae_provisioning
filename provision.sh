@@ -277,6 +277,13 @@ provision_backup() {
         ok "Installed example config for $service at $dest_conf (edit with real values!)"
       fi
     done
+    # Also copy apps.conf.example as CustomApps.conf if missing
+    customapps_conf="$BACKUP_ROOT/CustomApps/CustomApps.conf"
+    if [ -f "$REPO_PATH/config/backup/apps.conf.example" ] && [ ! -f "$customapps_conf" ]; then
+      mkdir -p "$BACKUP_ROOT/CustomApps"
+      cp "$REPO_PATH/config/backup/apps.conf.example" "$customapps_conf"
+      ok "Installed CustomApps config at $customapps_conf (edit with real values!)"
+    fi
   step "Running BACKUP role provisioning"
 
   # 1. Ensure backup directory structure
@@ -284,7 +291,7 @@ provision_backup() {
   mkdir -p $BACKUP_ROOT/nextcloud/{data,sql}
   mkdir -p $BACKUP_ROOT/mailcow/{backups}
   mkdir -p $BACKUP_ROOT/cyberpanel/{home,db}
-  mkdir -p $BACKUP_ROOT/CustomApps
+  mkdir -p $BACKUP_ROOT/CustomApps/{data,db}
 
   # 2. Install required tools
   apt-get update -y
