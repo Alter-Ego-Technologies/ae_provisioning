@@ -294,13 +294,13 @@ provision_backup() {
   install -m 0755 "$REPO_PATH/scripts/backup/sync_nextcloud.sh" $BACKUP_ROOT/scripts/sync_nextcloud.sh
   install -m 0755 "$REPO_PATH/scripts/backup/sync_mailcow.sh" $BACKUP_ROOT/scripts/sync_mailcow.sh
   install -m 0755 "$REPO_PATH/scripts/backup/sync_cyberpanel.sh" $BACKUP_ROOT/scripts/sync_cyberpanel.sh
-  install -m 0755 "$REPO_PATH/scripts/backup/sync_webstack.sh" $BACKUP_ROOT/scripts/sync_webstack.sh
+  install -m 0755 "$REPO_PATH/scripts/backup/sync_apps.sh" $BACKUP_ROOT/scripts/sync_apps.sh
 
   # Also install to /usr/local/bin for global access
   install -m 0755 "$REPO_PATH/scripts/backup/sync_nextcloud.sh" /usr/local/bin/sync_nextcloud.sh
   install -m 0755 "$REPO_PATH/scripts/backup/sync_mailcow.sh" /usr/local/bin/sync_mailcow.sh
   install -m 0755 "$REPO_PATH/scripts/backup/sync_cyberpanel.sh" /usr/local/bin/sync_cyberpanel.sh
-  install -m 0755 "$REPO_PATH/scripts/backup/sync_webstack.sh" /usr/local/bin/sync_webstack.sh
+  install -m 0755 "$REPO_PATH/scripts/backup/sync_apps.sh" /usr/local/bin/sync_apps.sh
 
   ok "BACKUP role provisioning complete"
 
@@ -317,7 +317,7 @@ PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 # CyberPanel: nightly at 3:15
 15 3 * * * ${ADMIN_USER} /mnt/Backups/scripts/sync_cyberpanel.sh >> /mnt/Backups/logs/cyberpanel.log 2>&1
 # CustomApps: nightly at 4:15
-15 4 * * * ${ADMIN_USER} /mnt/Backups/scripts/sync_webstack.sh >> /mnt/Backups/logs/webstack.log 2>&1
+15 4 * * * ${ADMIN_USER} /mnt/Backups/scripts/sync_apps.sh >> /mnt/Backups/logs/apps.log 2>&1
 EOF
   chmod 0644 /etc/cron.d/backup-maint
   ok "Backup cron schedule installed"
