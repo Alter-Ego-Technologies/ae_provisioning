@@ -12,6 +12,8 @@ CONF_PATH="/mnt/Backups/CustomApps/CustomApps.conf"
 
 # Ensure destination exists
 mkdir -p "$CUSTOMAPPS_DATA_DST"
+chmod -R 777 "$CUSTOMAPPS_DATA_DST"
+chown -R "$CUSTOMAPPS_SSH_USER":"$CUSTOMAPPS_SSH_USER" "$CUSTOMAPPS_DATA_DST"
 
 
 # Rsync CustomApps files (do not preserve group to avoid chgrp errors)
