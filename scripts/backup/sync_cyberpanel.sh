@@ -8,6 +8,9 @@ flock -n 9 || exit 0
 CONF_PATH="/mnt/Backups/cyberpanel/cyberpanel.conf"
 [ -f "$CONF_PATH" ] && source "$CONF_PATH"
 
-rsync -aHAX --delete -e "ssh -p ${CP_SSH_PORT}" gabe@${CP_PRI}:/home/ /mnt/Backups/cyberpanel/home/
+rsync -aHAX --numeric-ids --delete \
+	-e "ssh -p ${CP_SSH_PORT} -i /home/gabe/.ssh/id_ed25519" \
+	--rsync-path="sudo /usr/bin/rsync" \
+	gabe@${CP_PRI}:/home/ /mnt/Backups/cyberpanel/home/
 STAMP=$(date +%F_%H%M%S)
 ssh -p ${CP_SSH_PORT} gabe@${CP_PRI} "mysqldump --all-databases --single-transaction" | gzip > /mnt/Backups/cyberpanel/db/cyberpanel_${STAMP}.sql.gz
