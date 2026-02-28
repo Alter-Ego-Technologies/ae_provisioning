@@ -20,8 +20,8 @@ if [[ -z "${SERVER_ROLE:-}" ]]; then
   echo -e "  ${GREEN}1)${RESET} ${BOLD}Base ${RESET} - Minimal system setup, no app stack"
   echo -e "  ${GREEN}2)${RESET} ${BOLD}Mail ${RESET} - Mail server (Mailcow, postfix, dovecot, etc.)"
   echo -e "  ${GREEN}3)${RESET} ${BOLD}CyberPanel ${RESET} - CyberPanel-managed web hosting (web, users, DBs)"
-  echo -e "  ${GREEN}4)${RESET} ${BOLD}Custom Apps & Services ${RESET} - Standalone code, apps, or services not managed by CyberPanel (e.g., static sites, dev tools, custom web apps, scripts, etc.)"
-  echo -e "  ${GREEN}5)${RESET} ${BOLD}WebCyberPanel${RESET} - Both CyberPanel and custom web stack together"
+  echo -e "  ${GREEN}4)${RESET} ${BOLD}Custom Apps & Services ${RESET} - Standalone code, apps, or services (not managed by CyberPanel). For static sites, dev tools, custom web apps, scripts, and any non-panel projects."
+  echo -e "  ${GREEN}5)${RESET} ${BOLD}WebCyberPanel${RESET} - Both CyberPanel and custom apps together"
   echo -e "  ${GREEN}6)${RESET} ${BOLD}Nextcloud ${RESET} - Nextcloud file server stack"
   echo -e "  ${GREEN}7)${RESET} ${BOLD}Backup ${RESET} - Dedicated backup server (runs all backup scripts/crons)"
   echo -e "  ${RED}0)${RESET} Quit"
@@ -33,11 +33,6 @@ if [[ -z "${SERVER_ROLE:-}" ]]; then
     2) SERVER_ROLE="Mail" ;;
     3) SERVER_ROLE="CyberPanel" ;;
     4) SERVER_ROLE="CustomApps" ;;
-    ############################################################
-    # Ensure main data volume is mounted (edit device as needed)
-    # Example fstab entry for main volume:
-    # /dev/sdb1   /mnt/web   ext4   defaults   0 2
-    ############################################################
     5) SERVER_ROLE="WebCyberPanel" ;;
     6) SERVER_ROLE="Nextcloud" ;;
     7) SERVER_ROLE="Backup" ;;
@@ -273,7 +268,7 @@ chmod 0644 /etc/ops-monitor/role
 provision_backup() {
     BACKUP_ROOT="/mnt/Backups"
     # 3a. Copy example configs to runtime locations if missing
-    for service in nextcloud mailcow cyberpanel webstack; do
+    for service in nextcloud mailcow cyberpanel customapps; do
       example_conf="$REPO_PATH/config/backup/${service}.conf.example"
       dest_conf="$BACKUP_ROOT/${service}/${service}.conf"
       mkdir -p "$BACKUP_ROOT/$service"
@@ -289,7 +284,7 @@ provision_backup() {
   mkdir -p $BACKUP_ROOT/nextcloud/{data,sql}
   mkdir -p $BACKUP_ROOT/mailcow/{backups}
   mkdir -p $BACKUP_ROOT/cyberpanel/{home,db}
-  mkdir -p $BACKUP_ROOT/webstack
+  mkdir -p $BACKUP_ROOT/customapps
 
   # 2. Install required tools
   apt-get update -y
@@ -321,7 +316,7 @@ PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 15 2 * * * ${ADMIN_USER} /mnt/Backups/scripts/sync_nextcloud.sh >> /mnt/Backups/logs/nextcloud.log 2>&1
 # CyberPanel: nightly at 3:15
 15 3 * * * ${ADMIN_USER} /mnt/Backups/scripts/sync_cyberpanel.sh >> /mnt/Backups/logs/cyberpanel.log 2>&1
-# WebStack: nightly at 4:15
+# CustomApps: nightly at 4:15
 15 4 * * * ${ADMIN_USER} /mnt/Backups/scripts/sync_webstack.sh >> /mnt/Backups/logs/webstack.log 2>&1
 EOF
   chmod 0644 /etc/cron.d/backup-maint
@@ -398,11 +393,11 @@ fi
   ok "MAIL role provisioning complete"
 }
 
-provision_webstack() {
-  step "Web stack provisioning"
+provision_customapps() {
+  step "Custom Apps & Services provisioning"
 
-  # Web stack firewall ports (base already allows SSH_PORT)
-  step "Allowing HTTP/HTTPS/SMTP through UFW"
+  # Custom apps/services firewall ports (base already allows SSH_PORT)
+  step "Allowing HTTP/HTTPS/SMTP through UFW (for custom apps/services)"
   ufw allow 80/tcp
   ufw allow 443/tcp
   ufw allow out 25/tcp    # SMTP (alert relay to mail server)
@@ -414,15 +409,15 @@ provision_webstack() {
     crontab -l | grep -Ev 'docker-clean\.sh|docker system prune|docker volume prune' | crontab -
   fi
 
-  mkdir -p /mnt/web/webstack
-  chown $ADMIN_USER:$ADMIN_USER /mnt/web/webstack
-  mkdir -p /opt/webstack
-  chown $ADMIN_USER:$ADMIN_USER /opt/webstack
-  mount --bind /mnt/web/webstack /opt/webstack
-  if ! grep -q "/mnt/web/webstack" /etc/fstab; then
-    echo "/mnt/web/webstack /opt/webstack none bind 0 0" >> /etc/fstab
+  mkdir -p /mnt/web/customapps
+  chown $ADMIN_USER:$ADMIN_USER /mnt/web/customapps
+  mkdir -p /opt/customapps
+  chown $ADMIN_USER:$ADMIN_USER /opt/customapps
+  mount --bind /mnt/web/customapps /opt/customapps
+  if ! grep -q "/mnt/web/customapps" /etc/fstab; then
+    echo "/mnt/web/customapps /opt/customapps none bind 0 0" >> /etc/fstab
   fi  
-    ok "WEBSTACK role provisioning complete"
+    ok "Custom Apps & Services role provisioning complete"
   }
 
 # ---------------------------------------------------------
@@ -541,7 +536,7 @@ provision_cyberpanel() {
 
 case "$SERVER_ROLE" in
   Mail) provision_mail ;;
-  WebStack)  provision_webstack ;;
+  CustomApps)  provision_customapps ;;
   CyberPanel) provision_cyberpanel ;;
   WebCyberPanel) provision_webstack; provision_cyberpanel ;;
   Nextcloud) provision_nextcloud ;;
