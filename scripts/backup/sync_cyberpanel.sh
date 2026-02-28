@@ -13,4 +13,4 @@ rsync -aHAX --numeric-ids --delete \
 	--rsync-path="sudo /usr/bin/rsync" \
 	gabe@${CP_PRI}:/home/ /mnt/Backups/cyberpanel/home/
 STAMP=$(date +%F_%H%M%S)
-ssh -p ${CP_SSH_PORT} gabe@${CP_PRI} "mysqldump --all-databases --single-transaction" | gzip > /mnt/Backups/cyberpanel/db/cyberpanel_${STAMP}.sql.gz
+ssh -p ${CP_SSH_PORT} gabe@${CP_PRI} "mysqldump --defaults-file=~/.my.cnf --all-databases --single-transaction" | gzip > /mnt/Backups/cyberpanel/db/cyberpanel_${STAMP}.sql.gz
