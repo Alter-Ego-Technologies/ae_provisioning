@@ -1,13 +1,13 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Wrapper to run both custom apps and CyberPanel backup scripts in sequence
+# Wrapper to run both standalone and CyberPanel backup scripts in sequence
 # Logs output and errors for each step
 
 LOG_DIR="/mnt/Backups/logs"
 mkdir -p "$LOG_DIR"
 STAMP=$(date +%F_%H%M%S)
-LOG_FILE="$LOG_DIR/all_customapps_${STAMP}.log"
+LOG_FILE="$LOG_DIR/all_web_${STAMP}.log"
 
 run_backup() {
   local script="$1"
