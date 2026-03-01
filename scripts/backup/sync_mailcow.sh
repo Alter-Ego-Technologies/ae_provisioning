@@ -23,11 +23,6 @@ else
 	exit 1
 fi
 
-# Ensure destination directory exists with proper permissions
-mkdir -p "${MC_BACKUP_DST}"
-chmod -R 777 "${MC_BACKUP_DST}"
-chown -R "${MC_SSH_USER}:${MC_SSH_USER}" "${MC_BACKUP_DST}"
-
 log "Starting mailcow rsync backup: ${MC_SSH_USER}@${MC_PRI}:${MC_BACKUP_SRC} -> ${MC_BACKUP_DST}"
 if rsync -aHAX --numeric-ids --no-group --delete --exclude="mailcow.conf" \
 	-e "ssh -p ${MC_SSH_PORT} -i /home/gabe/.ssh/id_ed25519" \
