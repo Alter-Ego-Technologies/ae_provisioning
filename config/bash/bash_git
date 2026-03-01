@@ -1,0 +1,55 @@
+## === [git] ===
+alias gs='git status'
+alias ga='git add'
+alias gaa='git add .'
+alias gb='git branch'
+alias gco='git checkout'
+alias gc='git commit -v'
+alias gcm='git commit -m'
+alias gcam='git commit -am'
+alias gd='git diff'
+alias gl='git log --oneline --graph --decorate'
+alias gp='git push'
+alias gpo='git push origin'
+alias gpu='git pull'
+alias gcl='git clone'
+alias gst='git stash'
+alias gsta='git stash apply'
+alias gsts='git stash show'
+alias gpop='git stash pop'
+alias gr='git remote -v'
+alias gt='git tag'
+alias gpl='git pull origin'
+alias gplr='git pull --rebase'
+
+gbranch() {
+  git rev-parse --abbrev-ref HEAD
+}
+
+groot() {
+  git rev-parse --show-toplevel
+}
+
+ghardreset() {
+  echo "⚠️ This will HARD reset and clean all uncommitted changes. Continue? [y/N]"
+  read -r confirm
+  [[ "$confirm" == "y" ]] && git reset --hard && git clean -fd
+}
+
+ginfo() {
+  echo "📂 Repo: $(basename "$(groot)")"
+  echo "🌿 Branch: $(gbranch)"
+  echo "🔗 Remotes:" && gr
+  echo "📦 Status:" && gs
+}
+
+gpush() {
+  local branch
+  branch=$(gbranch)
+  echo "⬆️ Pushing to origin/$branch..."
+  git push origin "$branch"
+}
+
+ghistory() {
+  git log -n 5 --pretty=format:"%C(yellow)%h %Cgreen%ad %Creset%s %Cblue[%an]" --date=short
+}

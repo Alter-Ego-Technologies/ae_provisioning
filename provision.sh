@@ -32,7 +32,7 @@ if [[ -z "${SERVER_ROLE:-}" ]]; then
     1) SERVER_ROLE="Base" ;;
     2) SERVER_ROLE="Mail" ;;
     3) SERVER_ROLE="CyberPanel" ;;
-    4) SERVER_ROLE="CustomApps" ;;
+    4) SERVER_ROLE="standalone" ;;
     5) SERVER_ROLE="WebCyberPanel" ;;
     6) SERVER_ROLE="Nextcloud" ;;
     7) SERVER_ROLE="Backup" ;;
@@ -157,6 +157,43 @@ else
   useradd -m -s /bin/bash "$ADMIN_USER"
 fi
 
+# Install universal cert and service helpers for all roles
+install -m 644 "$REPO_PATH/config/bash/cert_and_service_helpers" /home/$ADMIN_USER/.bash_cert_helpers
+chown $ADMIN_USER:$ADMIN_USER /home/$ADMIN_USER/.bash_cert_helpers
+
+# Ensure .bashrc sources the helper (append if not present)
+if ! grep -q 'bash_cert_helpers' /home/$ADMIN_USER/.bashrc; then
+  echo '[[ -f ~/.bash_cert_helpers ]] && source ~/.bash_cert_helpers' >> /home/$ADMIN_USER/.bashrc
+fi
+
+# Install role-specific bash helpers and aliases
+if [[ "$SERVER_ROLE" == "WebCyberPanel" || "$SERVER_ROLE" == "standalone" ]]; then
+  step "Installing web/dev bash helpers and aliases"
+  install -m 644 "$REPO_PATH/config/bash/bash_git" /home/$ADMIN_USER/.bash_git
+  install -m 644 "$REPO_PATH/config/bash/bash_network" /home/$ADMIN_USER/.bash_network
+  install -m 644 "$REPO_PATH/config/bash/bash_helpers" /home/$ADMIN_USER/.bash_helpers
+  install -m 644 "$REPO_PATH/config/bash/bash_aliases" /home/$ADMIN_USER/.bash_aliases
+  chown $ADMIN_USER:$ADMIN_USER /home/$ADMIN_USER/.bash_{git,network,helpers,aliases}
+fi
+
+if [[ "$SERVER_ROLE" == "Mail" ]]; then
+  step "Installing mail server bash helpers and aliases"
+  install -m 644 "$REPO_PATH/config/bash/bash_git" /home/$ADMIN_USER/.bash_git
+  install -m 644 "$REPO_PATH/config/bash/bash_network" /home/$ADMIN_USER/.bash_network
+  install -m 644 "$REPO_PATH/config/bash/bash_helpers" /home/$ADMIN_USER/.bash_helpers
+  install -m 644 "$REPO_PATH/config/bash/mailserver_aliases" /home/$ADMIN_USER/.bash_aliases
+  chown $ADMIN_USER:$ADMIN_USER /home/$ADMIN_USER/.bash_{git,network,helpers,aliases}
+fi
+
+if [[ "$SERVER_ROLE" == "CyberPanel" ]]; then
+  step "Installing web/dev bash helpers and aliases"
+  install -m 644 "$REPO_PATH/config/bash/bash_git" /home/$ADMIN_USER/.bash_git
+  install -m 644 "$REPO_PATH/config/bash/bash_network" /home/$ADMIN_USER/.bash_network
+  install -m 644 "$REPO_PATH/config/bash/bash_helpers" /home/$ADMIN_USER/.bash_helpers
+  install -m 644 "$REPO_PATH/config/bash/bash_aliases" /home/$ADMIN_USER/.bash_aliases
+  chown $ADMIN_USER:$ADMIN_USER /home/$ADMIN_USER/.bash_{git,network,helpers,aliases}
+fi
+
 step "Enabling passwordless sudo"
 usermod -aG sudo,adm,systemd-journal,docker "$ADMIN_USER"
 echo "$ADMIN_USER ALL=(ALL) NOPASSWD:ALL" > /etc/sudoers.d/90-$ADMIN_USER
@@ -268,7 +305,7 @@ chmod 0644 /etc/ops-monitor/role
 provision_backup() {
     BACKUP_ROOT="/mnt/Backups"
     # 3a. Copy example configs to runtime locations if missing
-    for service in nextcloud mailcow cyberpanel customapps; do
+    for service in nextcloud mailcow cyberpanel standalone; do
       example_conf="$REPO_PATH/config/backup/${service}.conf.example"
       dest_conf="$BACKUP_ROOT/${service}/${service}.conf"
       mkdir -p "$BACKUP_ROOT/$service"
@@ -277,13 +314,6 @@ provision_backup() {
         ok "Installed example config for $service at $dest_conf (edit with real values!)"
       fi
     done
-    # Also copy apps.conf.example as CustomApps.conf if missing
-    customapps_conf="$BACKUP_ROOT/CustomApps/CustomApps.conf"
-    if [ -f "$REPO_PATH/config/backup/apps.conf.example" ] && [ ! -f "$customapps_conf" ]; then
-      mkdir -p "$BACKUP_ROOT/CustomApps"
-      cp "$REPO_PATH/config/backup/apps.conf.example" "$customapps_conf"
-      ok "Installed CustomApps config at $customapps_conf (edit with real values!)"
-    fi
   step "Running BACKUP role provisioning"
 
   # 1. Ensure backup directory structure
@@ -291,7 +321,7 @@ provision_backup() {
   mkdir -p $BACKUP_ROOT/nextcloud/{data,sql}
   mkdir -p $BACKUP_ROOT/mailcow/backups
   mkdir -p $BACKUP_ROOT/cyberpanel/{home,db}
-  mkdir -p $BACKUP_ROOT/CustomApps/{data,db}
+  mkdir -p $BACKUP_ROOT/standalone/{home,db}
 
   chmod 700 -R $BACKUP_ROOT
 
@@ -304,13 +334,13 @@ provision_backup() {
   install -m 0755 "$REPO_PATH/scripts/backup/sync_mailcow.sh" $BACKUP_ROOT/scripts/sync_mailcow.sh
   install -m 0755 "$REPO_PATH/scripts/backup/sync_cyberpanel.sh" $BACKUP_ROOT/scripts/sync_cyberpanel.sh
   install -m 0755 "$REPO_PATH/scripts/backup/sync_apps.sh" $BACKUP_ROOT/scripts/sync_apps.sh
-  install -m 0755 "$REPO_PATH/scripts/backup/sync_all_web.sh" $BACKUP_ROOT/scripts/sync_all_web.sh
+  install -m 0755 "$REPO_PATH/scripts/backup/sync_standalone.sh" $BACKUP_ROOT/scripts/sync_standalone.sh
 
   # Also install to /usr/local/bin for global access
   install -m 0755 "$REPO_PATH/scripts/backup/sync_nextcloud.sh" /usr/local/bin/sync_nextcloud.sh
   install -m 0755 "$REPO_PATH/scripts/backup/sync_mailcow.sh" /usr/local/bin/sync_mailcow.sh
   install -m 0755 "$REPO_PATH/scripts/backup/sync_cyberpanel.sh" /usr/local/bin/sync_cyberpanel.sh
-  install -m 0755 "$REPO_PATH/scripts/backup/sync_apps.sh" /usr/local/bin/sync_apps.sh
+  install -m 0755 "$REPO_PATH/scripts/backup/sync_standalone.sh" /usr/local/bin/sync_standalone.sh
   install -m 0755 "$REPO_PATH/scripts/backup/sync_all_web.sh" /usr/local/bin/sync_all_web.sh
 
   ok "BACKUP role provisioning complete"
@@ -327,8 +357,8 @@ PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 15 2 * * * ${ADMIN_USER} /mnt/Backups/scripts/sync_nextcloud.sh >> /mnt/Backups/logs/nextcloud.log 2>&1
 # CyberPanel: nightly at 3:15
 15 3 * * * ${ADMIN_USER} /mnt/Backups/scripts/sync_cyberpanel.sh >> /mnt/Backups/logs/cyberpanel.log 2>&1
-# CustomApps: nightly at 4:15
-15 4 * * * ${ADMIN_USER} /mnt/Backups/scripts/sync_apps.sh >> /mnt/Backups/logs/apps.log 2>&1
+# Standalone: nightly at 4:15
+15 4 * * * ${ADMIN_USER} /mnt/Backups/scripts/sync_standalone.sh >> /mnt/Backups/logs/standalone.log 2>&1
 EOF
   chmod 0644 /etc/cron.d/backup-maint
   ok "Backup cron schedule installed"
@@ -420,13 +450,13 @@ provision_customapps() {
     crontab -l | grep -Ev 'docker-clean\.sh|docker system prune|docker volume prune' | crontab -
   fi
 
-  mkdir -p /mnt/web/CustomApps
-  chown $ADMIN_USER:$ADMIN_USER /mnt/web/CustomApps
-  mkdir -p /opt/CustomApps
-  chown $ADMIN_USER:$ADMIN_USER /opt/CustomApps
-  mount --bind /mnt/web/CustomApps /opt/CustomApps
-  if ! grep -q "/mnt/web/CustomApps" /etc/fstab; then
-    echo "/mnt/web/CustomApps /opt/CustomApps none bind 0 0" >> /etc/fstab
+  mkdir -p /mnt/web/standalone
+  chown $ADMIN_USER:$ADMIN_USER /mnt/web/standalone
+  mkdir -p /opt/standalone
+  chown $ADMIN_USER:$ADMIN_USER /opt/standalone
+  mount --bind /mnt/web/standalone /opt/standalone
+  if ! grep -q "/mnt/web/standalone" /etc/fstab; then
+    echo "/mnt/web/standalone /opt/standalone none bind 0 0" >> /etc/fstab
   fi  
     ok "Custom Apps & Services role provisioning complete"
   }
@@ -547,9 +577,9 @@ provision_cyberpanel() {
 
 case "$SERVER_ROLE" in
   Mail) provision_mail ;;
-  CustomApps)  provision_customapps ;;
+  standalone)  provision_standalone ;;
   CyberPanel) provision_cyberpanel ;;
-  WebCyberPanel) provision_customapps; provision_cyberpanel ;;
+  WebCyberPanel) provision_standalone; provision_cyberpanel ;;
   Nextcloud) provision_nextcloud ;;
   Backup) provision_backup ;;
   Base) : ;;

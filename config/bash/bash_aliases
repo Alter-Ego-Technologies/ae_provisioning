@@ -1,0 +1,141 @@
+################ Aliases ################################
+# enable color support of ls and also add handy aliases
+if [ -x /usr/bin/dircolors ]; then
+    test -r ~/.dircolors && eval "$(dircolors -b ~/.dircolors)" || eval "$(dircolors -b)"
+    alias ls='ls --color=auto'
+    #alias dir='dir --color=auto'
+    #alias vdir='vdir --color=auto'
+
+    alias grep='grep --color=auto'
+    alias fgrep='fgrep --color=auto'
+    alias egrep='egrep --color=auto'
+fi
+
+# Directory Listings #
+alias ll='ls -alF' #Filetypes and permissions
+alias la='ls -A' #Lists all except . and ..
+alias l='ls -CF' # Clean column based list
+
+# Sort by time modified
+alias lt='ls -lt'          # Sort by modification time, newest first
+alias ltr='ls -ltr'        # Time sorted, reverse (oldest at bottom)
+
+# Human-readable sizes
+alias lh='ls -lh'          # Long list, human file sizes
+alias lsh='ls -sh'         # Show size in human-readable, short list
+
+# Only dirs
+alias lsd='ls -l | grep "^d"'  # List only directories
+
+# Tree style (needs `tree` installed)
+alias lst='tree -L 1 --dirsfirst'  # Top-level folder view
+
+
+## 🚀 Git Shortcuts ##
+alias gs='git status'
+alias ga='git add'
+alias gaa='git add .'
+alias gb='git branch'
+alias gco='git checkout'
+alias gc='git commit -v'
+alias gcm='git commit -m'
+alias gcam='git commit -am'
+alias gd='git diff'
+alias gl='git log --oneline --graph --decorate'
+alias gp='git push'
+alias gpo='git push origin'
+alias gpu='git pull'
+alias gcl='git clone'
+alias gst='git stash'
+alias gsta='git stash apply'
+alias gsts='git stash show'
+alias gpop='git stash pop'
+alias gr='git remote -v'
+alias gt='git tag'
+alias gpl='git pull origin'
+alias gplr='git pull --rebase'
+
+
+## 🚀 LiteSpeed Web Server ##
+
+# Restart LiteSpeed
+alias web-restart='systemctl restart lsws'
+
+# Start/Stop/Status
+alias web-start='systemctl start lsws'
+alias web-stop='systemctl stop lsws'
+alias web-status='systemctl status lsws'
+
+
+# Network Commands #
+alias lookup-port='ss -tuln | grep 8888' # Port Lookup
+
+## Cyber Panel ##
+alias start='/usr/local/lscp/bin/lscpdctrl start'
+alias stop='/usr/local/lscp/bin/lscpdctrl stop'
+
+
+## Firewall ##
+
+# Quick status checks
+alias firewall-list='ufw status numbered'
+alias firewall-status='ufw status'
+
+# Enable/Disable firewall
+alias firewall-enable='ufw enable'
+alias firewall-disable='ufw disable'
+alias firewall-restart='ufw reload'
+
+# Dynamic helper function
+firewall() {
+  case "$1" in
+    allow) ufw allow "$2";;
+    deny) ufw deny "$2";;
+    delete) ufw delete "$2";;
+    status) ufw status;;
+    list) ufw status numbered;;
+    enable) ufw enable;;
+    disable) ufw disable;;
+    reload) ufw reload;;
+    help|"")
+      echo "Usage: firewall [allow|deny|delete|status|list|enable|disable|reload] [port/rule]"
+      ;;
+    *) echo "Unknown command: $1";;
+  esac
+}
+
+
+## 🧾 Log Viewer Function ##
+log() {
+  local mode="tail"
+  local lines=50
+
+  if [[ "$1" == "watch" ]]; then
+    mode="watch"
+    shift
+  fi
+
+  case "$1" in
+    error|web-error)
+      [[ "$mode" == "watch" ]] && tail -f /usr/local/lsws/logs/error.log || tail -n $lines /usr/local/lsws/logs/error.log
+      ;;
+    access|web-access)
+      [[ "$mode" == "watch" ]] && tail -f /usr/local/lsws/logs/access.log || tail -n $lines /usr/local/lsws/logs/access.log
+      ;;
+    mailcow)
+      [[ "$mode" == "watch" ]] && tail -f /var/log/mail.log || tail -n $lines /var/log/mail.log
+      ;;
+    ftp)
+      [[ "$mode" == "watch" ]] && tail -f /var/log/pure-ftpd/pure-ftpd.log || tail -n $lines /var/log/pure-ftpd/pure-ftpd.log
+      ;;
+    cyberpanel)
+      [[ "$mode" == "watch" ]] && tail -f /home/cyberpanel/error-logs.txt || tail -n $lines /home/cyberpanel/error-logs.txt
+      ;;
+    help|"")
+      echo "Usage: log [watch] <error|access|ftp|mailcow|cyberpanel>"
+      ;;
+    *)
+      echo "Unknown log type: $1"
+      ;;
+  esac
+}

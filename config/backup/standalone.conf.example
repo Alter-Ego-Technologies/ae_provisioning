@@ -1,0 +1,14 @@
+# standalone.conf example
+# Copy this file to /mnt/Backups/standalone/standalone.conf and edit as needed
+
+# SSH connection details
+STANDALONE_SSH_USER=gabe
+STANDALONE_SSH_PORT=2222
+STANDALONE_PRI=10.0.1.2
+
+# Source and destination paths
+STANDALONE_DATA_SRC="/home/"
+STANDALONE_DATA_DST="/mnt/Backups/standalone/home/"
+
+# Exclude patterns (optional)
+# STANDALONE_EXCLUDES="--exclude='*.log' --exclude='tmp/'"

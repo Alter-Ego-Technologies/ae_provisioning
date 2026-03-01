@@ -1,0 +1,76 @@
+## === [net] ===
+alias lookup-port='ss -tuln | grep 8888'
+#alias curl-panel='curl -k https://your-server-ip:8090'
+alias pubip='curl -s ifconfig.me'
+alias ports='ss -tulpen'
+alias port-watch='lsof -i -P -n | grep LISTEN'
+alias netinfo='ip -brief address'
+alias routez='ip route show'
+alias net-restart='systemctl restart networking'
+alias digg='dig +short'
+alias pingg='ping -c 4 1.1.1.1'
+
+port_check() {
+  [[ -z "$1" || -z "$2" ]] && { echo "Usage: port_check <host> <port>"; return 1; }
+  nc -zv "$1" "$2" && echo "✅ $1:$2 is OPEN" || echo "❌ $1:$2 is CLOSED"
+}
+
+internet_talkers() {
+  netstat -tn 2>/dev/null | grep ESTABLISHED | awk '{print $5}' | cut -d: -f1 | sort | uniq -c | sort -nr
+}
+
+iface_status() {
+  ip -c -brief address
+}
+
+who_listens() {
+  ss -tuln | awk '{print $5}' | sort | uniq -c | sort -rn
+}
+
+whoami_net() {
+  curl -s https://ipinfo.io | jq .
+}
+
+smart_curl() {
+  local default_port=8090
+  local fallback_ip=$(curl -s ifconfig.me)
+  local port=""
+  local domain=""
+  local protocols="https http"
+  local known_ports="8090 7080 8443 443 80 8000 8080"
+  local target=""
+  local final_url=""
+
+  for d in /usr/local/lsws/logs/*.error.log; do
+    base=$(basename "$d")
+    name=${base%.error.log}
+    if ping -c1 -W1 "$name" &>/dev/null; then
+      domain="$name"
+      break
+    fi
+  done
+
+  [[ -z "$domain" ]] && domain="$fallback_ip"
+  target="$domain"
+
+  for p in $known_ports; do
+    if ss -tuln | grep -q ":$p"; then
+      port="$p"
+      break
+    fi
+  done
+
+  [[ -z "$port" ]] && port=80
+
+  for proto in $protocols; do
+    final_url="$proto://$target:$port"
+    code=$(curl -k -o /dev/null -s -w "%{http_code}" "$final_url")
+    if [[ "$code" =~ ^(200|301|302)$ ]]; then
+      echo "🌐 Found $proto service at $target:$port (HTTP $code)"
+      curl -k "$final_url"
+      return
+    fi
+  done
+
+  echo "❌ No live HTTP/S service found at $target on known ports."
+}

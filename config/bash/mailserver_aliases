@@ -1,0 +1,35 @@
+## === [mailcow] ===
+alias mailcow='cd /opt/mailcow-dockerized'
+alias certdir='cd /opt/mailcow-dockerized/data/assets/ssl/sni'
+alias webroot='cd /opt/mailcow-dockerized/data/web'
+alias restart='docker compose restart'
+alias logs='docker compose logs --tail=100 -f'
+alias acme='docker compose exec acme-mailcow /bin/bash'
+alias nginx='docker compose exec nginx-mailcow /bin/bash'
+alias postfix='docker compose exec postfix-mailcow /bin/bash'
+alias dovecot='docker compose exec dovecot-mailcow /bin/bash'
+
+## === [cert] ===
+cert-check() {
+  DOMAIN=$1
+  if [[ -z "$DOMAIN" ]]; then
+    echo "Usage: cert-check <domain>"
+    return 1
+  fi
+  echo | openssl s_client -connect ${DOMAIN}:443 -servername ${DOMAIN} 2>/dev/null | openssl x509 -noout -subject -issuer -dates
+}
+
+## === [webmail] ===
+warmup-domain() {
+  DOMAIN=$1
+  if [[ -z "$DOMAIN" ]]; then
+    echo "Usage: warmup-domain <domain>"
+    return 1
+  fi
+  echo "▶️ Hitting https://${DOMAIN}"
+  curl -s -o /dev/null -w "%{http_code} - %{url_effective}\\n" "https://${DOMAIN}"
+}
+
+alias reload-bash='source ~/.bashrc'
+
+alias webmail-url='echo "https://$(hostname -f)/SOGo/"'

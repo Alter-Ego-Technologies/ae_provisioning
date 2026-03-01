@@ -1,0 +1,126 @@
+# --- Nextcloud Helpers ---
+nextcloud-restart() {
+  if docker ps --format '{{.Names}}' | grep -q nextcloud; then
+    docker restart $(docker ps --format '{{.Names}}' | grep nextcloud)
+  elif systemctl list-units --type=service | grep -q nextcloud; then
+    sudo systemctl restart nextcloud
+  else
+    echo "No Nextcloud container or service found."
+  fi
+}
+
+nextcloud-status() {
+  if docker ps --format '{{.Names}}' | grep -q nextcloud; then
+    docker ps | grep nextcloud
+  elif systemctl list-units --type=service | grep -q nextcloud; then
+    sudo systemctl status nextcloud
+  else
+    echo "No Nextcloud container or service found."
+  fi
+}
+
+# --- Docker Helpers ---
+docker-ps() {
+  docker ps --format 'table {{.Names}}	{{.Status}}	{{.Ports}}'
+}
+
+docker-logs() {
+  if [ -z "$1" ]; then
+    echo "Usage: docker-logs <container>"
+    return 1
+  fi
+  docker logs --tail=100 -f "$1"
+}
+
+docker-exec() {
+  if [ -z "$1" ]; then
+    echo "Usage: docker-exec <container> [command]"
+    return 1
+  fi
+  shift
+  docker exec -it "$1" "$@"
+}
+# --- CyberPanel Control ---
+cyberpanel-restart() {
+  if [ -x /usr/local/lscp/bin/lscpdctrl ]; then
+    sudo /usr/local/lscp/bin/lscpdctrl restart
+  else
+    echo "CyberPanel control script not found."
+  fi
+}
+
+cyberpanel-status() {
+  if [ -x /usr/local/lscp/bin/lscpdctrl ]; then
+    sudo /usr/local/lscp/bin/lscpdctrl status
+  else
+    echo "CyberPanel control script not found."
+  fi
+}
+# === Certificate and Service Control Helpers ===
+
+# --- Certificate Inspection ---
+cert-check() {
+  DOMAIN=$1
+  if [[ -z "$DOMAIN" ]]; then
+    echo "Usage: cert-check <domain>"
+    return 1
+  fi
+  echo | openssl s_client -connect ${DOMAIN}:443 -servername ${DOMAIN} 2>/dev/null | openssl x509 -noout -subject -issuer -dates
+}
+
+# --- Web Server Control (auto-detects) ---
+web-restart() {
+  if systemctl list-units --type=service | grep -q 'lsws'; then
+    sudo systemctl restart lsws
+  elif systemctl list-units --type=service | grep -q 'nginx'; then
+    sudo systemctl restart nginx
+  elif systemctl list-units --type=service | grep -q 'apache2'; then
+    sudo systemctl restart apache2
+  else
+    echo "No known web server found (lsws, nginx, apache2)."
+  fi
+}
+
+web-status() {
+  if systemctl list-units --type=service | grep -q 'lsws'; then
+    sudo systemctl status lsws
+  elif systemctl list-units --type=service | grep -q 'nginx'; then
+    sudo systemctl status nginx
+  elif systemctl list-units --type=service | grep -q 'apache2'; then
+    sudo systemctl status apache2
+  else
+    echo "No known web server found (lsws, nginx, apache2)."
+  fi
+}
+
+# --- Mail Server Control (auto-detects) ---
+mail-restart() {
+  if systemctl list-units --type=service | grep -q 'mailcow'; then
+    cd /opt/mailcow-dockerized && docker compose restart
+  elif systemctl list-units --type=service | grep -q 'postfix'; then
+    sudo systemctl restart postfix
+    sudo systemctl restart dovecot
+  else
+    echo "No known mail server found (mailcow, postfix, dovecot)."
+  fi
+}
+
+mail-status() {
+  if systemctl list-units --type=service | grep -q 'mailcow'; then
+    cd /opt/mailcow-dockerized && docker compose ps
+  elif systemctl list-units --type=service | grep -q 'postfix'; then
+    sudo systemctl status postfix
+    sudo systemctl status dovecot
+  else
+    echo "No known mail server found (mailcow, postfix, dovecot)."
+  fi
+}
+
+# --- Webmail Quick Access (prints URL) ---
+webmail-url() {
+  if [ -d /opt/mailcow-dockerized ]; then
+    echo "https://$(hostname -f)/SOGo/"
+  else
+    echo "Webmail location not detected."
+  fi
+}

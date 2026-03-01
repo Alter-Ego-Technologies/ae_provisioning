@@ -1,0 +1,28 @@
+helpme() {
+  local filter="${1:-}"
+  local sources=(~/.bash_git ~/.bash_network ~/.bash_cert_helpers)
+
+  echo "📘 Available Aliases and Functions"
+  echo "----------------------------------"
+
+  for src in "${sources[@]}"; do
+    if [[ -f "$src" ]]; then
+      echo -e "\n📂 Source: $(basename "$src")"
+      awk -v filter="$filter" '
+        /^## === \[.*\] ===$/ {
+          category = gensub(/## === \[(.*)\] ===/, "\\1", "g", $0)
+        }
+        /^alias / {
+          if (filter == "" || category ~ filter || $0 ~ filter)
+            print "⚙️  [alias][" category "] " $0
+        }
+        /^[a-zA-Z0-9_]+\(\)/ {
+          if (filter == "" || category ~ filter || $0 ~ filter)
+            print "🔧 [func ][" category "] " $1
+        }
+      ' "$src"
+    fi
+  done
+
+  echo -e "\n🔍 Usage: helpme [keyword]\nExample: helpme git"
+}
