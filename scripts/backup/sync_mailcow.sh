@@ -24,7 +24,7 @@ else
 fi
 
 log "Starting mailcow rsync backup: ${MC_SSH_USER}@${MC_PRI}:${MC_BACKUP_SRC} -> ${MC_BACKUP_DST}"
-if rsync -aHAX --numeric-ids --no-group --delete \
+if rsync -aHAX --numeric-ids --no-group --delete --exclude="mailcow.conf" \
 	-e "ssh -p ${MC_SSH_PORT} -i /home/gabe/.ssh/id_ed25519" \
 	--rsync-path="sudo /usr/bin/rsync" \
 	${MC_SSH_USER}@${MC_PRI}:${MC_BACKUP_SRC}/ ${MC_BACKUP_DST}/ >> "$LOG_FILE" 2>&1; then
