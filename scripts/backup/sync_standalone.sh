@@ -34,9 +34,9 @@ fi
 : "${STANDALONE_SSH_USER:?STANDALONE_SSH_USER is not set}"
 
 # Ensure destination exists
-mkdir -p "${STANDALONE_DATA_DST}"
-chmod -R 777 "${STANDALONE_DATA_DST}"
-chown -R "${STANDALONE_SSH_USER}:${STANDALONE_SSH_USER}" "${STANDALONE_DATA_DST}"
+#mkdir -p "${STANDALONE_DATA_DST}"
+#chmod -R 777 "${STANDALONE_DATA_DST}"
+#chown -R "${STANDALONE_SSH_USER}:${STANDALONE_SSH_USER}" "${STANDALONE_DATA_DST}"
 
 log "Starting standalone rsync backup: ${STANDALONE_SSH_USER}@${STANDALONE_PRI}:${STANDALONE_DATA_SRC} -> ${STANDALONE_DATA_DST}"
 # Rsync standalone files (do not preserve group to avoid chgrp errors)
