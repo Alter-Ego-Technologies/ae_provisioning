@@ -321,7 +321,7 @@ provision_backup() {
   mkdir -p $BACKUP_ROOT/nextcloud/{data,sql}
   mkdir -p $BACKUP_ROOT/mailcow/backups
   mkdir -p $BACKUP_ROOT/cyberpanel/{home,db}
-  mkdir -p $BACKUP_ROOT/standalone/{home,db}
+  mkdir -p $BACKUP_ROOT/standalone
 
   chmod 700 -R $BACKUP_ROOT
 
