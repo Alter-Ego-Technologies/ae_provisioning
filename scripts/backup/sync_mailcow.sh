@@ -34,9 +34,6 @@ else
 	exit 2
 fi
 
-prin
 
-rsync -aHAX --numeric-ids --no-group --delete \
-	-e "ssh -p ${MC_SSH_PORT} -i /home/gabe/.ssh/id_ed25519" \
-	--rsync-path="sudo /usr/bin/rsync" \
-	${MC_SSH_USER}@${MC_PRI}:${MC_BACKUP_SRC}/ ${MC_BACKUP_DST}/
+# Ensure mail sync is stored in /mnt/Backups/mailcow
+# Remove duplicate/legacy rsync and clarify log messages
