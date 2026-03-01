@@ -40,7 +40,8 @@ chown -R "${STANDALONE_SSH_USER}:${STANDALONE_SSH_USER}" "${STANDALONE_DATA_DST}
 
 log "Starting standalone rsync backup: ${STANDALONE_SSH_USER}@${STANDALONE_PRI}:${STANDALONE_DATA_SRC} -> ${STANDALONE_DATA_DST}"
 # Rsync standalone files (do not preserve group to avoid chgrp errors)
-if rsync -aHAX --no-group --delete -e "ssh -p ${STANDALONE_SSH_PORT}" ${STANDALONE_SSH_USER}@${STANDALONE_PRI}:${STANDALONE_DATA_SRC}/ ${STANDALONE_DATA_DST}/ >> "$LOG_FILE" 2>&1; then
+# Exclude the config file itself to prevent it from being deleted by --delete
+if rsync -aHAX --no-group --delete --exclude="standalone.conf" -e "ssh -p ${STANDALONE_SSH_PORT}" ${STANDALONE_SSH_USER}@${STANDALONE_PRI}:${STANDALONE_DATA_SRC}/ ${STANDALONE_DATA_DST}/ >> "$LOG_FILE" 2>&1; then
   log "Standalone files backup completed successfully."
 else
   err "Standalone backup failed. See $LOG_FILE for details."
