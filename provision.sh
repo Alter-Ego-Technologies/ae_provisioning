@@ -333,8 +333,8 @@ provision_backup() {
   install -m 0755 "$REPO_PATH/scripts/backup/sync_nextcloud.sh" $BACKUP_ROOT/scripts/sync_nextcloud.sh
   install -m 0755 "$REPO_PATH/scripts/backup/sync_mailcow.sh" $BACKUP_ROOT/scripts/sync_mailcow.sh
   install -m 0755 "$REPO_PATH/scripts/backup/sync_cyberpanel.sh" $BACKUP_ROOT/scripts/sync_cyberpanel.sh
-  install -m 0755 "$REPO_PATH/scripts/backup/sync_apps.sh" $BACKUP_ROOT/scripts/sync_apps.sh
   install -m 0755 "$REPO_PATH/scripts/backup/sync_standalone.sh" $BACKUP_ROOT/scripts/sync_standalone.sh
+  install -m 0755 "$REPO_PATH/scripts/backup/sync_all_web.sh" $BACKUP_ROOT/scripts/sync_all_web.sh
 
   # Also install to /usr/local/bin for global access
   install -m 0755 "$REPO_PATH/scripts/backup/sync_nextcloud.sh" /usr/local/bin/sync_nextcloud.sh
