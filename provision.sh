@@ -536,7 +536,7 @@ provision_cyberpanel() {
   ufw allow 3306/tcp   # MariaDB/MySQL (optional, restrict as needed)
 
   mkdir -p /mnt/web/Websites
-  chown cyberpanel:cyberpanel /mnt/web/Websites
+  chown nobody:nogroup /mnt/web/Websites
 
   # Migrate user home directories from /home to /mnt/web/Websites if not already present
   step "Migrating user home directories to /mnt/web/Websites before bind-mounting"
