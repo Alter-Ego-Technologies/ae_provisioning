@@ -502,8 +502,8 @@ provision_nextcloud() {
 
   # Start containers using docker-compose (if available)
   if [ -f /opt/nextcloud/docker-compose.yml ]; then
-    step "Starting Nextcloud stack via docker-compose..."
-    docker-compose -f /opt/nextcloud/docker-compose.yml up -d
+    step "Starting Nextcloud stack via docker compose..."
+    docker compose -f /opt/nextcloud/docker-compose.yml up -d
   else
     err "docker-compose.yml not found. Please place it at /opt/nextcloud/docker-compose.yml."
     exit 1
