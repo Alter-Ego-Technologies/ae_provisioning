@@ -434,7 +434,7 @@ fi
   ok "MAIL role provisioning complete"
 }
 
-provision_customapps() {
+provision_standalone() {
   step "Custom Apps & Services provisioning"
 
   # Custom apps/services firewall ports (base already allows SSH_PORT)
