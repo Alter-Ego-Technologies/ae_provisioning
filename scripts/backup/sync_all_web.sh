@@ -21,7 +21,7 @@ run_backup() {
   echo | tee -a "$LOG_FILE"
 }
 
-run_backup "/mnt/Backups/scripts/sync_apps.sh" "Custom Apps"
+run_backup "/mnt/Backups/scripts/sync_standalone.sh" "Standalone"
 run_backup "/mnt/Backups/scripts/sync_cyberpanel.sh" "CyberPanel"
 
 echo "All webstack-related backups complete. See $LOG_FILE for details."
