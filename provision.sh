@@ -157,6 +157,11 @@ else
   useradd -m -s /bin/bash "$ADMIN_USER"
 fi
 
+# Ensure home directory exists and is properly owned
+mkdir -p /home/$ADMIN_USER
+chown -R $ADMIN_USER:$ADMIN_USER /home/$ADMIN_USER
+chmod 700 /home/$ADMIN_USER
+
 # Install universal cert and service helpers for all roles
 install -m 644 "$REPO_PATH/config/bash/cert_and_service_helpers" /home/$ADMIN_USER/.bash_cert_helpers
 chown $ADMIN_USER:$ADMIN_USER /home/$ADMIN_USER/.bash_cert_helpers
