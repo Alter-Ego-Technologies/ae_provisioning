@@ -148,8 +148,31 @@ if ! getent group docker >/dev/null; then
 fi
 
 # ---------------------------------------------------------
+# PRE-USER SETUP: MOUNT POINTS FOR CYBERPANEL ROLES
+# ---------------------------------------------------------
+# For CyberPanel/WebCyberPanel roles, set up /home bind mount BEFORE creating user
+if [[ "$SERVER_ROLE" == "CyberPanel" || "$SERVER_ROLE" == "WebCyberPanel" ]]; then
+  step "Pre-mounting /home -> /mnt/web/Websites for $SERVER_ROLE role"
+  mkdir -p /mnt/web/Websites
+  chown nobody:nogroup /mnt/web/Websites
+  
+  # Only mount if not already mounted
+  if ! mountpoint -q /home; then
+    mount --bind /mnt/web/Websites /home
+    if ! grep -q "/mnt/web/Websites" /etc/fstab; then
+      echo "/mnt/web/Websites /home none bind 0 0" >> /etc/fstab
+    fi
+    ok "Bind mount set up: /mnt/web/Websites -> /home"
+  fi
+fi
+
+# ---------------------------------------------------------
 # CREATE USER & SSH SETUP
 # ---------------------------------------------------------
+# Ensure /home exists for all roles (may not exist on fresh systems)
+mkdir -p /home
+chmod 755 /home
+
 if id -u "$ADMIN_USER" >/dev/null 2>&1; then
   ok "User '$ADMIN_USER' already exists, skipping creation"
 else
@@ -157,10 +180,18 @@ else
   useradd -m -s /bin/bash "$ADMIN_USER"
 fi
 
-# Ensure home directory exists and is properly owned
-mkdir -p /home/$ADMIN_USER
+# Ensure home directory exists and is properly owned (in case useradd didn't create it)
+if [ ! -d "/home/$ADMIN_USER" ]; then
+  mkdir -p /home/$ADMIN_USER
+fi
 chown -R $ADMIN_USER:$ADMIN_USER /home/$ADMIN_USER
 chmod 700 /home/$ADMIN_USER
+
+# Ensure .bashrc exists
+if [ ! -f "/home/$ADMIN_USER/.bashrc" ]; then
+  touch /home/$ADMIN_USER/.bashrc
+  chown $ADMIN_USER:$ADMIN_USER /home/$ADMIN_USER/.bashrc
+fi
 
 # Install universal cert and service helpers for all roles
 install -m 644 "$REPO_PATH/config/bash/cert_and_service_helpers" /home/$ADMIN_USER/.bash_cert_helpers
@@ -328,7 +359,10 @@ provision_backup() {
   mkdir -p $BACKUP_ROOT/cyberpanel/{home,db}
   mkdir -p $BACKUP_ROOT/standalone
 
-  chmod 700 -R $BACKUP_ROOT
+  # Set ownership to ADMIN_USER so backup scripts can run as that user
+  chown -R $ADMIN_USER:$ADMIN_USER $BACKUP_ROOT
+  chmod 755 $BACKUP_ROOT
+  chmod -R 755 $BACKUP_ROOT/{scripts,logs,nextcloud,mailcow,cyberpanel,standalone}
 
   # 2. Install required tools
   apt-get update -y
@@ -539,27 +573,6 @@ provision_cyberpanel() {
   ufw allow 53/tcp     # DNS
   ufw allow 53/udp     # DNS
   ufw allow 3306/tcp   # MariaDB/MySQL (optional, restrict as needed)
-
-  mkdir -p /mnt/web/Websites
-  chown nobody:nogroup /mnt/web/Websites
-
-  # Migrate user home directories from /home to /mnt/web/Websites if not already present
-  step "Migrating user home directories to /mnt/web/Websites before bind-mounting"
-  for d in /home/*; do
-    # Only migrate if it's a directory, not a symlink, and not already present in /mnt/web/Websites
-    if [ -d "$d" ] && [ ! -L "$d" ]; then
-      userdir="$(basename "$d")"
-      if [ ! -e "/mnt/web/Websites/$userdir" ]; then
-        step "Moving /home/$userdir to /mnt/web/Websites/$userdir"
-        mv "$d" "/mnt/web/Websites/$userdir"
-      fi
-    fi
-  done
-
-  mount --bind /mnt/web/Websites /home
-  if ! grep -q "/mnt/web/Websites" /etc/fstab; then
-    echo "/mnt/web/Websites /home none bind 0 0" >> /etc/fstab
-  fi
 
   # Install or update CyberPanel without affecting user data
   if command -v cyberpanel >/dev/null 2>&1 || [ -d "/usr/local/CyberCP" ]; then
