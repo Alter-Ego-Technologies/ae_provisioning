@@ -169,21 +169,28 @@ fi
 # ---------------------------------------------------------
 # CREATE USER & SSH SETUP
 # ---------------------------------------------------------
-# Ensure /home exists for all roles (may not exist on fresh systems)
-mkdir -p /home
-chmod 755 /home
+# Ensure /home exists for all roles (may not exist on fresh systems or after unmount)
+if [ ! -d "/home" ]; then
+  mkdir -p /home
+  chmod 755 /home
+  ok "Created /home directory"
+fi
 
 if id -u "$ADMIN_USER" >/dev/null 2>&1; then
   ok "User '$ADMIN_USER' already exists, skipping creation"
+  # Ensure user has a proper home directory even if it doesn't exist
+  if [ ! -d "/home/$ADMIN_USER" ]; then
+    mkdir -p /home/$ADMIN_USER
+    chown $ADMIN_USER:$ADMIN_USER /home/$ADMIN_USER
+    chmod 700 /home/$ADMIN_USER
+    ok "Created missing home directory for existing user"
+  fi
 else
   step "Creating user '$ADMIN_USER'"
   useradd -m -s /bin/bash "$ADMIN_USER"
 fi
 
-# Ensure home directory exists and is properly owned (in case useradd didn't create it)
-if [ ! -d "/home/$ADMIN_USER" ]; then
-  mkdir -p /home/$ADMIN_USER
-fi
+# Ensure home directory is properly owned (in case it existed but with wrong perms)
 chown -R $ADMIN_USER:$ADMIN_USER /home/$ADMIN_USER
 chmod 700 /home/$ADMIN_USER
 
