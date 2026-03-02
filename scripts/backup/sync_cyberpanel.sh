@@ -22,7 +22,7 @@ fi
 
 log "Starting CyberPanel rsync backup: gabe@${CP_PRI}:/home -> /mnt/Backups/cyberpanel/home"
 if rsync -aHAX --numeric-ids --delete \
-	-e "ssh -p ${CP_SSH_PORT} -i /home/gabe/.ssh/id_ed25519" \
+	-e "ssh -p ${CP_SSH_PORT} -i /home/gabe/.ssh/id_ed25519 -o StrictHostKeyChecking=accept-new" \
 	--rsync-path="sudo /usr/bin/rsync" \
 	gabe@${CP_PRI}:/home/ /mnt/Backups/cyberpanel/home/ >> "$LOG_FILE" 2>&1; then
   log "CyberPanel rsync completed."
