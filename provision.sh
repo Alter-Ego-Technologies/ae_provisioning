@@ -148,56 +148,13 @@ if ! getent group docker >/dev/null; then
 fi
 
 # ---------------------------------------------------------
-# PRE-USER SETUP: MOUNT POINTS FOR CYBERPANEL ROLES
-# ---------------------------------------------------------
-# For CyberPanel/WebCyberPanel roles, set up /home bind mount BEFORE creating user
-if [[ "$SERVER_ROLE" == "CyberPanel" || "$SERVER_ROLE" == "WebCyberPanel" ]]; then
-  step "Pre-mounting /home -> /mnt/web/Websites for $SERVER_ROLE role"
-  mkdir -p /mnt/web/Websites
-  chown nobody:nogroup /mnt/web/Websites
-  
-  # Only mount if not already mounted
-  if ! mountpoint -q /home; then
-    mount --bind /mnt/web/Websites /home
-    if ! grep -q "/mnt/web/Websites" /etc/fstab; then
-      echo "/mnt/web/Websites /home none bind 0 0" >> /etc/fstab
-    fi
-    ok "Bind mount set up: /mnt/web/Websites -> /home"
-  fi
-fi
-
-# ---------------------------------------------------------
 # CREATE USER & SSH SETUP
 # ---------------------------------------------------------
-# Ensure /home exists for all roles (may not exist on fresh systems or after unmount)
-if [ ! -d "/home" ]; then
-  mkdir -p /home
-  chmod 755 /home
-  ok "Created /home directory"
-fi
-
 if id -u "$ADMIN_USER" >/dev/null 2>&1; then
   ok "User '$ADMIN_USER' already exists, skipping creation"
-  # Ensure user has a proper home directory even if it doesn't exist
-  if [ ! -d "/home/$ADMIN_USER" ]; then
-    mkdir -p /home/$ADMIN_USER
-    chown $ADMIN_USER:$ADMIN_USER /home/$ADMIN_USER
-    chmod 700 /home/$ADMIN_USER
-    ok "Created missing home directory for existing user"
-  fi
 else
   step "Creating user '$ADMIN_USER'"
   useradd -m -s /bin/bash "$ADMIN_USER"
-fi
-
-# Ensure home directory is properly owned (in case it existed but with wrong perms)
-chown -R $ADMIN_USER:$ADMIN_USER /home/$ADMIN_USER
-chmod 700 /home/$ADMIN_USER
-
-# Ensure .bashrc exists
-if [ ! -f "/home/$ADMIN_USER/.bashrc" ]; then
-  touch /home/$ADMIN_USER/.bashrc
-  chown $ADMIN_USER:$ADMIN_USER /home/$ADMIN_USER/.bashrc
 fi
 
 # Install universal cert and service helpers for all roles
