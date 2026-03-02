@@ -538,6 +538,13 @@ provision_cyberpanel() {
   ufw allow 53/udp     # DNS
   ufw allow 3306/tcp   # MariaDB/MySQL (optional, restrict as needed)
 
+  mkdir -p /mnt/web/Websites
+  chown nobody:nogroup /mnt/web/Websites
+  mount --bind /mnt/web/Websites /home
+  if ! grep -q "/mnt/web/Websites" /etc/fstab; then
+    echo "/mnt/web/Websites /home none bind 0 0" >> /etc/fstab
+  fi
+
   # Install or update CyberPanel without affecting user data
   if command -v cyberpanel >/dev/null 2>&1 || [ -d "/usr/local/CyberCP" ]; then
     step "Updating CyberPanel (safe upgrade, data preserved)"
