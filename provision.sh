@@ -152,6 +152,15 @@ fi
 # ---------------------------------------------------------
 if id -u "$ADMIN_USER" >/dev/null 2>&1; then
   ok "User '$ADMIN_USER' already exists, skipping creation"
+  # Check if home directory is missing or empty - if so, recreate it
+  if [ ! -d "/home/$ADMIN_USER" ] || [ ! -f "/home/$ADMIN_USER/.bashrc" ]; then
+    warn "Home directory missing or incomplete, recreating..."
+    # Remove user without deleting home (in case it's mounted elsewhere)
+    userdel "$ADMIN_USER" 2>/dev/null || true
+    # Recreate user with home directory
+    useradd -m -s /bin/bash "$ADMIN_USER"
+    ok "User recreated with fresh home directory"
+  fi
 else
   step "Creating user '$ADMIN_USER'"
   useradd -m -s /bin/bash "$ADMIN_USER"
