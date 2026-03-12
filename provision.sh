@@ -218,10 +218,18 @@ if [ ! -f "/home/$ADMIN_USER/.ssh/id_ed25519" ]; then
     ssh-keygen -t ed25519 -f /home/$ADMIN_USER/.ssh/id_ed25519 -N "" -C "$ADMIN_USER@$(hostname)"
     ok "Verifying key"
     ssh-keygen -l -f /home/$ADMIN_USER/.ssh/id_ed25519
+    # Only set up authorized_keys if we just created the key
+    cat /home/$ADMIN_USER/.ssh/id_ed25519.pub > /home/$ADMIN_USER/.ssh/authorized_keys
+    chmod 600 /home/$ADMIN_USER/.ssh/authorized_keys
+else
+    ok "SSH keypair already exists, skipping generation"
+    # Only set up authorized_keys if it doesn't exist
+    if [ ! -f "/home/$ADMIN_USER/.ssh/authorized_keys" ]; then
+      cat /home/$ADMIN_USER/.ssh/id_ed25519.pub > /home/$ADMIN_USER/.ssh/authorized_keys
+      chmod 600 /home/$ADMIN_USER/.ssh/authorized_keys
+    fi
 fi
 
-cat /home/$ADMIN_USER/.ssh/id_ed25519.pub > /home/$ADMIN_USER/.ssh/authorized_keys
-chmod 600 /home/$ADMIN_USER/.ssh/authorized_keys
 chown -R $ADMIN_USER:$ADMIN_USER /home/$ADMIN_USER/.ssh
 
 # ---------------------------------------------------------
