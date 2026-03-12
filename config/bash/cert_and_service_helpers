@@ -1,5 +1,4 @@
-# --- Nextcloud Helpers ---
-nextcloud-restart() {
+nextcloud_restart() {
   if docker ps --format '{{.Names}}' | grep -q nextcloud; then
     docker restart $(docker ps --format '{{.Names}}' | grep nextcloud)
   elif systemctl list-units --type=service | grep -q nextcloud; then
@@ -9,7 +8,7 @@ nextcloud-restart() {
   fi
 }
 
-nextcloud-status() {
+nextcloud_status() {
   if docker ps --format '{{.Names}}' | grep -q nextcloud; then
     docker ps | grep nextcloud
   elif systemctl list-units --type=service | grep -q nextcloud; then
@@ -20,28 +19,29 @@ nextcloud-status() {
 }
 
 # --- Docker Helpers ---
-docker-ps() {
+docker_ps() {
   docker ps --format 'table {{.Names}}	{{.Status}}	{{.Ports}}'
 }
 
-docker-logs() {
+docker_logs() {
   if [ -z "$1" ]; then
-    echo "Usage: docker-logs <container>"
+    echo "Usage: docker_logs <container>"
     return 1
   fi
   docker logs --tail=100 -f "$1"
 }
 
-docker-exec() {
+docker_exec() {
   if [ -z "$1" ]; then
-    echo "Usage: docker-exec <container> [command]"
+    echo "Usage: docker_exec <container> [command]"
     return 1
   fi
   shift
   docker exec -it "$1" "$@"
 }
+
 # --- CyberPanel Control ---
-cyberpanel-restart() {
+cyberpanel_restart() {
   if [ -x /usr/local/lscp/bin/lscpdctrl ]; then
     sudo /usr/local/lscp/bin/lscpdctrl restart
   else
@@ -49,27 +49,28 @@ cyberpanel-restart() {
   fi
 }
 
-cyberpanel-status() {
+cyberpanel_status() {
   if [ -x /usr/local/lscp/bin/lscpdctrl ]; then
     sudo /usr/local/lscp/bin/lscpdctrl status
   else
     echo "CyberPanel control script not found."
   fi
 }
+
 # === Certificate and Service Control Helpers ===
 
 # --- Certificate Inspection ---
-cert-check() {
+cert_check() {
   DOMAIN=$1
   if [[ -z "$DOMAIN" ]]; then
-    echo "Usage: cert-check <domain>"
+    echo "Usage: cert_check <domain>"
     return 1
   fi
   echo | openssl s_client -connect ${DOMAIN}:443 -servername ${DOMAIN} 2>/dev/null | openssl x509 -noout -subject -issuer -dates
 }
 
 # --- Web Server Control (auto-detects) ---
-web-restart() {
+web_restart() {
   if systemctl list-units --type=service | grep -q 'lsws'; then
     sudo systemctl restart lsws
   elif systemctl list-units --type=service | grep -q 'nginx'; then
@@ -81,7 +82,7 @@ web-restart() {
   fi
 }
 
-web-status() {
+web_status() {
   if systemctl list-units --type=service | grep -q 'lsws'; then
     sudo systemctl status lsws
   elif systemctl list-units --type=service | grep -q 'nginx'; then
@@ -94,7 +95,7 @@ web-status() {
 }
 
 # --- Mail Server Control (auto-detects) ---
-mail-restart() {
+mail_restart() {
   if systemctl list-units --type=service | grep -q 'mailcow'; then
     cd /opt/mailcow-dockerized && docker compose restart
   elif systemctl list-units --type=service | grep -q 'postfix'; then
@@ -105,7 +106,7 @@ mail-restart() {
   fi
 }
 
-mail-status() {
+mail_status() {
   if systemctl list-units --type=service | grep -q 'mailcow'; then
     cd /opt/mailcow-dockerized && docker compose ps
   elif systemctl list-units --type=service | grep -q 'postfix'; then
@@ -117,7 +118,7 @@ mail-status() {
 }
 
 # --- Webmail Quick Access (prints URL) ---
-webmail-url() {
+webmail_url() {
   if [ -d /opt/mailcow-dockerized ]; then
     echo "https://$(hostname -f)/SOGo/"
   else
