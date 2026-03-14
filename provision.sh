@@ -352,7 +352,7 @@ provision_backup() {
   # 3. Copy remote.conf.example for S3/B2 if missing
   if [ -f "$REPO_PATH/config/backup/remote.conf.example" ] && [ ! -f "$BACKUP_ROOT/remote.conf" ]; then
     cp "$REPO_PATH/config/backup/remote.conf.example" "$BACKUP_ROOT/remote.conf"
-    ok "Installed remote.conf at $BACKUP_ROOT/remote.conf (edit RCLONE_REMOTE and run rclone config)"
+    ok "Installed remote.conf at $BACKUP_ROOT/remote.conf (see config/backup/SETUP_B2.md for B2 setup; edit RCLONE_REMOTE and run rclone config)"
   fi
 
   # 4. Install backup scripts from repo

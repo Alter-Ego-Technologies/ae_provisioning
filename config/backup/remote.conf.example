@@ -1,11 +1,15 @@
-# S3 or B2 remote config for backup server
-# 1. Copy to /mnt/Backups/remote.conf
+# Cloud remote config for backup server (Backblaze B2, S3, or R2)
+# See config/backup/SETUP_B2.md for step-by-step B2 setup instructions.
+#
+# 1. Copy this file to /mnt/Backups/remote.conf
 # 2. Run: rclone config  (as the backup admin user) to create the remote
-# 3. Set RCLONE_REMOTE below to match (e.g. s3backup:mybucket/backups or b2backup:mybucket/backups)
+# 3. Set RCLONE_REMOTE below to match your remote name and path
 
 # Remote as defined in rclone config (name:bucket/path)
+# B2:  rclone config -> choose "Backblaze B2" -> key_id, application_key, bucket
+#      Example: b2backup:my-bucket-name/backups
 # S3:  rclone config -> choose "Amazon S3" -> bucket, region, access key
-# B2:  rclone config -> choose "Backblaze B2" -> key_id, key, bucket name
+# R2:  rclone config -> choose "Amazon S3" with Other provider, R2 endpoint
 RCLONE_REMOTE="remote:bucket/backups"
 
 # Optional: use an encrypted remote for extra security (run rclone config to create crypt remote)
