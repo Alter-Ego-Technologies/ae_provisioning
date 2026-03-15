@@ -166,7 +166,7 @@ else
   useradd -m -s /bin/bash "$ADMIN_USER"
 fi
 
-BASH_HELPERS_REPO_URL="${BASH_HELPERS_REPO_URL:-https://github.com/Alter-Ego-Technologies/bash-helpers.git}"
+BASH_HELPERS_REPO_URL="${BASH_HELPERS_REPO_URL:-git@github.com:Alter-Ego-Technologies/bash-helpers.git}"
 BASH_HELPERS_PATH="/opt/bash-helpers"
 
 step "Installing bash dotfiles from bash-helpers"
