@@ -43,7 +43,9 @@ log "Starting standalone rsync backup: ${STANDALONE_SSH_USER}@${STANDALONE_PRI}:
 # Exclude the config file itself to prevent it from being deleted by --delete
 if rsync -aHAX --no-group --delete --exclude="standalone.conf" -e "ssh -p ${STANDALONE_SSH_PORT} -o StrictHostKeyChecking=accept-new" ${STANDALONE_SSH_USER}@${STANDALONE_PRI}:${STANDALONE_DATA_SRC}/ ${STANDALONE_DATA_DST}/ >> "$LOG_FILE" 2>&1; then
   log "Standalone files backup completed successfully."
+  /mnt/Backups/scripts/backup_notify.sh standalone success "$LOG_FILE" 2>/dev/null || true
 else
   err "Standalone backup failed. See $LOG_FILE for details."
+  /mnt/Backups/scripts/backup_notify.sh standalone failure "$LOG_FILE" 2>/dev/null || true
   exit 2
 fi

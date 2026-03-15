@@ -355,6 +355,13 @@ provision_backup() {
     ok "Installed remote.conf at $BACKUP_ROOT/remote.conf (see config/backup/SETUP_B2.md for B2 setup; edit RCLONE_REMOTE and run rclone config)"
   fi
 
+  # 3b. Copy notify.conf.example for backup email notifications if missing
+  if [ -f "$REPO_PATH/config/backup/notify.conf.example" ] && [ ! -f "$BACKUP_ROOT/notify.conf" ]; then
+    cp "$REPO_PATH/config/backup/notify.conf.example" "$BACKUP_ROOT/notify.conf"
+    chown $ADMIN_USER:$ADMIN_USER "$BACKUP_ROOT/notify.conf"
+    ok "Installed notify.conf at $BACKUP_ROOT/notify.conf (edit BACKUP_NOTIFY_TO for recipients)"
+  fi
+
   # 4. Install backup scripts from repo
   install -m 0755 "$REPO_PATH/scripts/backup/sync_nextcloud.sh" $BACKUP_ROOT/scripts/sync_nextcloud.sh
   install -m 0755 "$REPO_PATH/scripts/backup/sync_mailcow.sh" $BACKUP_ROOT/scripts/sync_mailcow.sh
@@ -362,6 +369,8 @@ provision_backup() {
   install -m 0755 "$REPO_PATH/scripts/backup/sync_standalone.sh" $BACKUP_ROOT/scripts/sync_standalone.sh
   install -m 0755 "$REPO_PATH/scripts/backup/sync_all_web.sh" $BACKUP_ROOT/scripts/sync_all_web.sh
   install -m 0755 "$REPO_PATH/scripts/backup/sync_to_cloud.sh" $BACKUP_ROOT/scripts/sync_to_cloud.sh
+  install -m 0755 "$REPO_PATH/scripts/backup/backup_notify.sh" $BACKUP_ROOT/scripts/backup_notify.sh
+  install -m 0755 "$REPO_PATH/scripts/backup/backup_mailcow_daily_summary.sh" $BACKUP_ROOT/scripts/backup_mailcow_daily_summary.sh
 
   # Also install to /usr/local/bin for global access
   install -m 0755 "$REPO_PATH/scripts/backup/sync_nextcloud.sh" /usr/local/bin/sync_nextcloud.sh
@@ -370,6 +379,8 @@ provision_backup() {
   install -m 0755 "$REPO_PATH/scripts/backup/sync_standalone.sh" /usr/local/bin/sync_standalone.sh
   install -m 0755 "$REPO_PATH/scripts/backup/sync_all_web.sh" /usr/local/bin/sync_all_web.sh
   install -m 0755 "$REPO_PATH/scripts/backup/sync_to_cloud.sh" /usr/local/bin/sync_to_cloud.sh
+  install -m 0755 "$REPO_PATH/scripts/backup/backup_notify.sh" /usr/local/bin/backup_notify.sh
+  install -m 0755 "$REPO_PATH/scripts/backup/backup_mailcow_daily_summary.sh" /usr/local/bin/backup_mailcow_daily_summary.sh
 
   ok "BACKUP role provisioning complete"
 
@@ -389,6 +400,8 @@ PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 15 4 * * * ${ADMIN_USER} /mnt/Backups/scripts/sync_standalone.sh >> /mnt/Backups/logs/standalone-cron.log 2>&1
 # S3/B2 offsite: nightly at 5:15 (after all local backups complete)
 15 5 * * * ${ADMIN_USER} /mnt/Backups/scripts/sync_to_cloud.sh >> /mnt/Backups/logs/cloud-cron.log 2>&1
+# Mailcow backup daily summary (one email/day instead of hourly)
+0 6 * * * ${ADMIN_USER} /mnt/Backups/scripts/backup_mailcow_daily_summary.sh >> /mnt/Backups/logs/mailcow-summary-cron.log 2>&1
 EOF
   chmod 0644 /etc/cron.d/backup-maint
   ok "Backup cron schedule installed"

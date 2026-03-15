@@ -39,7 +39,9 @@ if rclone sync "$BACKUP_ROOT" "$REMOTE" \
   --log-file "$LOG_FILE" \
   --log-level INFO; then
   log "Cloud sync completed successfully."
+  /mnt/Backups/scripts/backup_notify.sh cloud success "$LOG_FILE" 2>/dev/null || true
 else
   err "Cloud sync failed. See $LOG_FILE for details."
+  /mnt/Backups/scripts/backup_notify.sh cloud failure "$LOG_FILE" 2>/dev/null || true
   exit 2
 fi

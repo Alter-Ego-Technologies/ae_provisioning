@@ -1,0 +1,4 @@
+# Backup success/failure notification recipients (space-separated for mail -s)
+# Used by: sync_nextcloud, sync_cyberpanel, sync_standalone, sync_to_cloud
+# Mailcow: one daily summary at 6:00 (no per-run emails)
+BACKUP_NOTIFY_TO="admins@alteregotech.com admins@clearpointreporting.com"

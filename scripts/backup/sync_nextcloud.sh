@@ -28,13 +28,16 @@ if rsync -aHAX --delete -e "ssh -p ${NC_SSH_PORT}" ${NC_SSH_USER}@${NC_PRI}:${NC
   log "Nextcloud rsync completed."
 else
   err "Nextcloud rsync failed. See $LOG_FILE for details."
+  /mnt/Backups/scripts/backup_notify.sh nextcloud failure "$LOG_FILE" 2>/dev/null || true
   exit 2
 fi
 
 log "Dumping Nextcloud database to $SQL_OUT"
 if ssh -p ${NC_SSH_PORT} ${NC_SSH_USER}@${NC_PRI} "docker exec nextcloud_db mysqldump --single-transaction -u${DB_USER} -p'${DB_PASS}' ${DB_NAME}" > ${SQL_OUT} 2>> "$LOG_FILE"; then
   log "Nextcloud backup completed successfully."
+  /mnt/Backups/scripts/backup_notify.sh nextcloud success "$LOG_FILE" 2>/dev/null || true
 else
   err "Nextcloud backup failed. See $LOG_FILE for details."
+  /mnt/Backups/scripts/backup_notify.sh nextcloud failure "$LOG_FILE" 2>/dev/null || true
   exit 2
 fi

@@ -28,13 +28,16 @@ if rsync -aHAX --numeric-ids --delete \
   log "CyberPanel rsync completed."
 else
   err "CyberPanel rsync failed. See $LOG_FILE for details."
+  /mnt/Backups/scripts/backup_notify.sh cyberpanel failure "$LOG_FILE" 2>/dev/null || true
   exit 2
 fi
 
 log "Dumping CyberPanel databases to /mnt/Backups/cyberpanel/db/cyberpanel_${STAMP}.sql.gz"
 if ssh -p ${CP_SSH_PORT} gabe@${CP_PRI} "mysqldump --defaults-file=~/.my.cnf --all-databases --single-transaction" 2>> "$LOG_FILE" | gzip > /mnt/Backups/cyberpanel/db/cyberpanel_${STAMP}.sql.gz; then
   log "CyberPanel backup completed successfully."
+  /mnt/Backups/scripts/backup_notify.sh cyberpanel success "$LOG_FILE" 2>/dev/null || true
 else
   err "CyberPanel backup failed. See $LOG_FILE for details."
+  /mnt/Backups/scripts/backup_notify.sh cyberpanel failure "$LOG_FILE" 2>/dev/null || true
   exit 2
 fi
