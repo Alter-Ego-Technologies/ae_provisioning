@@ -166,41 +166,23 @@ else
   useradd -m -s /bin/bash "$ADMIN_USER"
 fi
 
-# Install universal cert and service helpers for all roles
-install -m 644 "$REPO_PATH/config/bash/cert_and_service_helpers" /home/$ADMIN_USER/.bash_cert_helpers
-chown $ADMIN_USER:$ADMIN_USER /home/$ADMIN_USER/.bash_cert_helpers
+BASH_HELPERS_REPO_URL="${BASH_HELPERS_REPO_URL:-https://github.com/Alter-Ego-Technologies/bash-helpers.git}"
+BASH_HELPERS_PATH="/opt/bash-helpers"
 
-# Ensure .bashrc sources the helper (append if not present)
-if ! grep -q 'bash_cert_helpers' /home/$ADMIN_USER/.bashrc; then
-  echo '[[ -f ~/.bash_cert_helpers ]] && source ~/.bash_cert_helpers' >> /home/$ADMIN_USER/.bashrc
+step "Installing bash dotfiles from bash-helpers"
+if [[ ! -d "${BASH_HELPERS_PATH}/bash-dotfiles" ]]; then
+  git clone --depth 1 "$BASH_HELPERS_REPO_URL" "$BASH_HELPERS_PATH"
 fi
 
-# Install role-specific bash helpers and aliases
-if [[ "$SERVER_ROLE" == "WebCyberPanel" || "$SERVER_ROLE" == "standalone" ]]; then
-  step "Installing web/dev bash helpers and aliases"
-  install -m 644 "$REPO_PATH/config/bash/bash_git" /home/$ADMIN_USER/.bash_git
-  install -m 644 "$REPO_PATH/config/bash/bash_network" /home/$ADMIN_USER/.bash_network
-  install -m 644 "$REPO_PATH/config/bash/bash_helpers" /home/$ADMIN_USER/.bash_helpers
-  install -m 644 "$REPO_PATH/config/bash/bash_aliases" /home/$ADMIN_USER/.bash_aliases
-  chown $ADMIN_USER:$ADMIN_USER /home/$ADMIN_USER/.bash_{git,network,helpers,aliases}
-fi
+DOTFILES_DIR="${BASH_HELPERS_PATH}/bash-dotfiles"
+TARGET_HOME="/home/$ADMIN_USER" TARGET_USER="$ADMIN_USER" \
+  bash "$DOTFILES_DIR/install-copy.sh"
 
+# Role-specific: Mail server gets different aliases
 if [[ "$SERVER_ROLE" == "Mail" ]]; then
-  step "Installing mail server bash helpers and aliases"
-  install -m 644 "$REPO_PATH/config/bash/bash_git" /home/$ADMIN_USER/.bash_git
-  install -m 644 "$REPO_PATH/config/bash/bash_network" /home/$ADMIN_USER/.bash_network
-  install -m 644 "$REPO_PATH/config/bash/bash_helpers" /home/$ADMIN_USER/.bash_helpers
-  install -m 644 "$REPO_PATH/config/bash/mailserver_aliases" /home/$ADMIN_USER/.bash_aliases
-  chown $ADMIN_USER:$ADMIN_USER /home/$ADMIN_USER/.bash_{git,network,helpers,aliases}
-fi
-
-if [[ "$SERVER_ROLE" == "CyberPanel" ]]; then
-  step "Installing web/dev bash helpers and aliases"
-  install -m 644 "$REPO_PATH/config/bash/bash_git" /home/$ADMIN_USER/.bash_git
-  install -m 644 "$REPO_PATH/config/bash/bash_network" /home/$ADMIN_USER/.bash_network
-  install -m 644 "$REPO_PATH/config/bash/bash_helpers" /home/$ADMIN_USER/.bash_helpers
-  install -m 644 "$REPO_PATH/config/bash/bash_aliases" /home/$ADMIN_USER/.bash_aliases
-  chown $ADMIN_USER:$ADMIN_USER /home/$ADMIN_USER/.bash_{git,network,helpers,aliases}
+  step "Installing mail server bash aliases"
+  install -m 644 "$REPO_PATH/config/bash/mailserver_aliases" "/home/$ADMIN_USER/.bash_aliases"
+  chown "$ADMIN_USER:$ADMIN_USER" "/home/$ADMIN_USER/.bash_aliases"
 fi
 
 step "Enabling passwordless sudo"
