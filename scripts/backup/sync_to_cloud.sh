@@ -28,7 +28,8 @@ if [ -n "${RCLONE_REMOTE_CRYPT:-}" ]; then
 fi
 
 log "Starting cloud sync: $BACKUP_ROOT -> $REMOTE"
-exec 9>/tmp/cloud-backup.lock
+LOCK_FILE="$BACKUP_ROOT/.cloud-backup.lock"
+exec 9>"$LOCK_FILE" || { err "Cannot create lock file $LOCK_FILE"; exit 1; }
 flock -n 9 || { log "Another cloud sync already running, skipping"; exit 0; }
 
 RCLONE_OPTS=(--transfers 4 --checkers 8 --log-file "$LOG_FILE" --log-level INFO)
@@ -37,6 +38,7 @@ RCLONE_OPTS=(--transfers 4 --checkers 8 --log-file "$LOG_FILE" --log-level INFO)
 if ! rclone sync "$BACKUP_ROOT" "$REMOTE" \
   --exclude "logs/*.log" \
   --exclude "*.lock" \
+  --exclude ".cloud-backup.lock" \
   --exclude "scripts/" \
   --exclude "**/scripts/" \
   --exclude "*.conf" \
