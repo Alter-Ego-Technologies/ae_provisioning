@@ -23,16 +23,21 @@ else
 	exit 1
 fi
 
+# 1) Sync with --delete but exclude .conf so local .conf is never deleted (mount may not expose it)
 log "Starting mailcow rsync backup: ${MC_SSH_USER}@${MC_PRI}:${MC_BACKUP_SRC} -> ${MC_BACKUP_DST}"
-if rsync -aHAX --numeric-ids --no-group --delete --exclude="mailcow.conf" \
+if ! rsync -aHAX --numeric-ids --no-group --delete --exclude="mailcow.conf" \
 	-e "ssh -p ${MC_SSH_PORT} -i /home/gabe/.ssh/id_ed25519" \
 	--rsync-path="sudo /usr/bin/rsync" \
 	${MC_SSH_USER}@${MC_PRI}:${MC_BACKUP_SRC}/ ${MC_BACKUP_DST}/ >> "$LOG_FILE" 2>&1; then
-	log "Mailcow rsync backup completed successfully."
-else
 	err "Mailcow rsync backup failed. See $LOG_FILE for details."
 	exit 2
 fi
+# 2) Copy .conf from source when present (add/update, never delete)
+rsync -aHAX --no-group -e "ssh -p ${MC_SSH_PORT} -i /home/gabe/.ssh/id_ed25519" \
+	--rsync-path="sudo /usr/bin/rsync" \
+	--include="mailcow.conf" --exclude="*" \
+	${MC_SSH_USER}@${MC_PRI}:${MC_BACKUP_SRC}/ ${MC_BACKUP_DST}/ >> "$LOG_FILE" 2>&1 || true
+log "Mailcow rsync backup completed successfully."
 
 
 # Ensure mail sync is stored in /mnt/Backups/mailcow

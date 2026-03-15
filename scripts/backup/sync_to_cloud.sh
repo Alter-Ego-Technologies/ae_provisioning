@@ -31,17 +31,29 @@ log "Starting cloud sync: $BACKUP_ROOT -> $REMOTE"
 exec 9>/tmp/cloud-backup.lock
 flock -n 9 || { log "Another cloud sync already running, skipping"; exit 0; }
 
-if rclone sync "$BACKUP_ROOT" "$REMOTE" \
+RCLONE_OPTS=(--transfers 4 --checkers 8 --log-file "$LOG_FILE" --log-level INFO)
+
+# 1) Sync everything except .conf so mirror/delete never removes .conf on remote (e.g. mail/.conf from mount)
+if ! rclone sync "$BACKUP_ROOT" "$REMOTE" \
   --exclude "logs/*.log" \
   --exclude "*.lock" \
-  --transfers 4 \
-  --checkers 8 \
-  --log-file "$LOG_FILE" \
-  --log-level INFO; then
-  log "Cloud sync completed successfully."
-  /mnt/Backups/scripts/backup_notify.sh cloud success "$LOG_FILE" 2>/dev/null || true
-else
+  --exclude "*.conf" \
+  --exclude "**/*.conf" \
+  "${RCLONE_OPTS[@]}"; then
   err "Cloud sync failed. See $LOG_FILE for details."
   /mnt/Backups/scripts/backup_notify.sh cloud failure "$LOG_FILE" 2>/dev/null || true
   exit 2
 fi
+
+# 2) Copy .conf files only (add/update, never delete) so configs stay in backup
+if ! rclone copy "$BACKUP_ROOT" "$REMOTE" \
+  --include "*.conf" \
+  --include "**/*.conf" \
+  "${RCLONE_OPTS[@]}"; then
+  err "Cloud sync: .conf copy failed. See $LOG_FILE for details."
+  /mnt/Backups/scripts/backup_notify.sh cloud failure "$LOG_FILE" 2>/dev/null || true
+  exit 2
+fi
+
+log "Cloud sync completed successfully."
+/mnt/Backups/scripts/backup_notify.sh cloud success "$LOG_FILE" 2>/dev/null || true

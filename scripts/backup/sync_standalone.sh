@@ -38,14 +38,16 @@ fi
 #chmod -R 777 "${STANDALONE_DATA_DST}"
 #chown -R "${STANDALONE_SSH_USER}:${STANDALONE_SSH_USER}" "${STANDALONE_DATA_DST}"
 
+# 1) Sync with --delete but exclude .conf so local .conf is never deleted (mount may not expose it)
 log "Starting standalone rsync backup: ${STANDALONE_SSH_USER}@${STANDALONE_PRI}:${STANDALONE_DATA_SRC} -> ${STANDALONE_DATA_DST}"
-# Rsync standalone files (do not preserve group to avoid chgrp errors)
-# Exclude the config file itself to prevent it from being deleted by --delete
-if rsync -aHAX --no-group --delete --exclude="standalone.conf" -e "ssh -p ${STANDALONE_SSH_PORT} -o StrictHostKeyChecking=accept-new" ${STANDALONE_SSH_USER}@${STANDALONE_PRI}:${STANDALONE_DATA_SRC}/ ${STANDALONE_DATA_DST}/ >> "$LOG_FILE" 2>&1; then
-  log "Standalone files backup completed successfully."
-  /mnt/Backups/scripts/backup_notify.sh standalone success "$LOG_FILE" 2>/dev/null || true
-else
+if ! rsync -aHAX --no-group --delete --exclude="standalone.conf" -e "ssh -p ${STANDALONE_SSH_PORT} -o StrictHostKeyChecking=accept-new" ${STANDALONE_SSH_USER}@${STANDALONE_PRI}:${STANDALONE_DATA_SRC}/ ${STANDALONE_DATA_DST}/ >> "$LOG_FILE" 2>&1; then
   err "Standalone backup failed. See $LOG_FILE for details."
   /mnt/Backups/scripts/backup_notify.sh standalone failure "$LOG_FILE" 2>/dev/null || true
   exit 2
 fi
+# 2) Copy .conf from source when present (add/update, never delete)
+rsync -aHAX --no-group -e "ssh -p ${STANDALONE_SSH_PORT} -o StrictHostKeyChecking=accept-new" \
+  --include="standalone.conf" --exclude="*" \
+  ${STANDALONE_SSH_USER}@${STANDALONE_PRI}:${STANDALONE_DATA_SRC}/ ${STANDALONE_DATA_DST}/ >> "$LOG_FILE" 2>&1 || true
+log "Standalone files backup completed successfully."
+/mnt/Backups/scripts/backup_notify.sh standalone success "$LOG_FILE" 2>/dev/null || true
