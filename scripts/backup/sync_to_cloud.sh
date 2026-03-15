@@ -33,10 +33,12 @@ flock -n 9 || { log "Another cloud sync already running, skipping"; exit 0; }
 
 RCLONE_OPTS=(--transfers 4 --checkers 8 --log-file "$LOG_FILE" --log-level INFO)
 
-# 1) Sync everything except .conf so mirror/delete never removes .conf on remote (e.g. mail/.conf from mount)
+# 1) Sync everything except .conf and scripts (scripts come from repo; no need in B2)
 if ! rclone sync "$BACKUP_ROOT" "$REMOTE" \
   --exclude "logs/*.log" \
   --exclude "*.lock" \
+  --exclude "scripts/" \
+  --exclude "**/scripts/" \
   --exclude "*.conf" \
   --exclude "**/*.conf" \
   "${RCLONE_OPTS[@]}"; then
