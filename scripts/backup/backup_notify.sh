@@ -22,8 +22,11 @@ fi
 TO_RAW="${BACKUP_NOTIFY_TO:-admins@alteregotech.com admins@clearpointreporting.com}"
 # To: header requires comma-separated; convert spaces to ", "
 TO_HEADER="${TO_RAW// /, }"
+# From must match msmtprc / relay (e.g. server-alerts@alteregotech.com) or relay may reject
+FROM="${BACKUP_NOTIFY_FROM:-server-alerts@alteregotech.com}"
 HOST=$(hostname -f 2>/dev/null || hostname)
 SUBJECT="[Backup ${STATUS}] $JOB - $HOST - $(date '+%Y-%m-%d %H:%M')"
+NOTIFY_ERR_LOG="${BACKUP_ROOT}/logs/backup_notify.err"
 
 BODY=$(mktemp)
 {
@@ -38,12 +41,14 @@ BODY=$(mktemp)
   fi
 } > "$BODY"
 
-{
+if ! {
   echo "To: ${TO_HEADER}"
-  echo "From: backup@${HOST}"
+  echo "From: ${FROM}"
   echo "Subject: ${SUBJECT}"
   echo "Content-Type: text/plain; charset=UTF-8"
   echo ""
   cat "$BODY"
-} | /usr/sbin/sendmail -t 2>/dev/null || true
+} | /usr/sbin/sendmail -t 2>>"${NOTIFY_ERR_LOG}"; then
+  echo "[$(date -Iseconds)] backup_notify sendmail failed: $JOB $STATUS" >>"${NOTIFY_ERR_LOG}"
+fi
 rm -f "$BODY"
