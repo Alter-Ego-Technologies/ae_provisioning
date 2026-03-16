@@ -22,7 +22,7 @@ fi
 TO_RAW="${BACKUP_NOTIFY_TO:-admins@alteregotech.com admins@clearpointreporting.com}"
 # To: header requires comma-separated; convert spaces to ", "
 TO_HEADER="${TO_RAW// /, }"
-# From must match msmtprc / relay (e.g. server-alerts@alteregotech.com) or relay may reject
+# From must match msmtprc / relay or relay may reject
 FROM="${BACKUP_NOTIFY_FROM:-server-alerts@alteregotech.com}"
 HOST=$(hostname -f 2>/dev/null || hostname)
 SUBJECT="[Backup ${STATUS}] $JOB - $HOST - $(date '+%Y-%m-%d %H:%M')"
