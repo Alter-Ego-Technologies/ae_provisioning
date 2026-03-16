@@ -36,3 +36,6 @@ inc/
 
 # Ignore real backup configs with secrets
 /mnt/Backups/*/*.conf
+
+#Backups
+*.bak

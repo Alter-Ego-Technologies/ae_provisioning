@@ -41,6 +41,7 @@ BODY=$(mktemp)
   fi
 } > "$BODY"
 
+# Timeout so cron doesn't hang if SMTP is unreachable (e.g. backup server can't reach mail relay)
 if ! {
   echo "To: ${TO_HEADER}"
   echo "From: ${FROM}"
@@ -48,7 +49,7 @@ if ! {
   echo "Content-Type: text/plain; charset=UTF-8"
   echo ""
   cat "$BODY"
-} | /usr/sbin/sendmail -t 2>>"${NOTIFY_ERR_LOG}"; then
-  echo "[$(date -Iseconds)] backup_notify sendmail failed: $JOB $STATUS" >>"${NOTIFY_ERR_LOG}"
+} | timeout 30 /usr/sbin/sendmail -t 2>>"${NOTIFY_ERR_LOG}"; then
+  echo "[$(date -Iseconds)] backup_notify sendmail failed (timeout or error): $JOB $STATUS" >>"${NOTIFY_ERR_LOG}"
 fi
 rm -f "$BODY"

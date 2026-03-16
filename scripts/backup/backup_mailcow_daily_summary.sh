@@ -67,6 +67,7 @@ BODY=$(mktemp)
   fi
 } > "$BODY"
 
+# Timeout so cron doesn't hang if SMTP is unreachable
 if ! {
   echo "To: ${TO_HEADER}"
   echo "From: ${FROM}"
@@ -74,7 +75,7 @@ if ! {
   echo "Content-Type: text/plain; charset=UTF-8"
   echo ""
   cat "$BODY"
-} | /usr/sbin/sendmail -t 2>>"${NOTIFY_ERR_LOG}"; then
-  echo "[$(date -Iseconds)] backup_mailcow_daily_summary sendmail failed" >>"${NOTIFY_ERR_LOG}"
+} | timeout 30 /usr/sbin/sendmail -t 2>>"${NOTIFY_ERR_LOG}"; then
+  echo "[$(date -Iseconds)] backup_mailcow_daily_summary sendmail failed (timeout or error)" >>"${NOTIFY_ERR_LOG}"
 fi
 rm -f "$BODY"
