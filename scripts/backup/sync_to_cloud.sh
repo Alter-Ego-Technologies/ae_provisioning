@@ -39,6 +39,10 @@ if ! rclone sync "$BACKUP_ROOT" "$REMOTE" \
   --exclude "logs/*.log" \
   --exclude "*.lock" \
   --exclude ".cloud-backup.lock" \
+  --exclude ".cyberpanel-backup.lock" \
+  --exclude ".nextcloud-backup.lock" \
+  --exclude ".mailcow-backup.lock" \
+  --exclude ".standalone-backup.lock" \
   --exclude "scripts/" \
   --exclude "**/scripts/" \
   --exclude "*.conf" \

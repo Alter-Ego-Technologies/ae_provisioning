@@ -1,18 +1,16 @@
 #!/usr/bin/env bash
 set -e
-mountpoint -q /mnt/Backups || { echo "ERROR: /mnt/Backups not mounted"; exit 1; }
-exec 9>/tmp/mailcow-backup.lock
+BACKUP_ROOT="/mnt/Backups"
+mountpoint -q "$BACKUP_ROOT" || { echo "ERROR: /mnt/Backups not mounted"; exit 1; }
+LOCK_FILE="$BACKUP_ROOT/.mailcow-backup.lock"
+exec 9>"$LOCK_FILE" || { echo "ERROR: Cannot create lock file $LOCK_FILE (run as backup user?)"; exit 1; }
 flock -n 9 || exit 0
 
 STAMP=$(date +%F_%H%M%S)
-LOG_FILE="/mnt/Backups/logs/mailcow_sync_${STAMP}.log"
+LOG_FILE="$BACKUP_ROOT/logs/mailcow_sync_${STAMP}.log"
 
 log()   { echo "[$(date +'%F %T')] [INFO] $*" | tee -a "$LOG_FILE"; }
 err()   { echo "[$(date +'%F %T')] [ERROR] $*" | tee -a "$LOG_FILE" >&2; }
-
-mountpoint -q /mnt/Backups || { err "/mnt/Backups not mounted"; exit 1; }
-exec 9>/tmp/mailcow-backup.lock
-flock -n 9 || exit 0
 
 CONF_PATH="/mnt/Backups/mailcow/mailcow.conf"
 if [ -f "$CONF_PATH" ]; then

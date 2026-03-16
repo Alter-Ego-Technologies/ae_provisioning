@@ -1,13 +1,15 @@
 #!/usr/bin/env bash
 set -e
+BACKUP_ROOT="/mnt/Backups"
 STAMP=$(date +%F_%H%M%S)
-LOG_FILE="/mnt/Backups/logs/cyberpanel_sync_${STAMP}.log"
+LOG_FILE="$BACKUP_ROOT/logs/cyberpanel_sync_${STAMP}.log"
 
 log()   { echo "[$(date +'%F %T')] [INFO] $*" | tee -a "$LOG_FILE"; }
 err()   { echo "[$(date +'%F %T')] [ERROR] $*" | tee -a "$LOG_FILE" >&2; }
 
-mountpoint -q /mnt/Backups || { err "/mnt/Backups not mounted"; exit 1; }
-exec 9>/tmp/cyberpanel-backup.lock
+mountpoint -q "$BACKUP_ROOT" || { err "/mnt/Backups not mounted"; exit 1; }
+LOCK_FILE="$BACKUP_ROOT/.cyberpanel-backup.lock"
+exec 9>"$LOCK_FILE" || { err "Cannot create lock file $LOCK_FILE (run as backup user?)"; exit 1; }
 flock -n 9 || exit 0
 
 # Source config from /mnt/Backups/cyberpanel/cyberpanel.conf if present
