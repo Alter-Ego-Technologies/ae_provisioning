@@ -353,6 +353,7 @@ provision_backup() {
   install -m 0755 "$REPO_PATH/scripts/backup/sync_to_cloud.sh" $BACKUP_ROOT/scripts/sync_to_cloud.sh
   install -m 0755 "$REPO_PATH/scripts/backup/backup_notify.sh" $BACKUP_ROOT/scripts/backup_notify.sh
   install -m 0755 "$REPO_PATH/scripts/backup/backup_mailcow_daily_summary.sh" $BACKUP_ROOT/scripts/backup_mailcow_daily_summary.sh
+  chown -R $ADMIN_USER:$ADMIN_USER $BACKUP_ROOT/scripts
 
   # Also install to /usr/local/bin for global access
   install -m 0755 "$REPO_PATH/scripts/backup/sync_nextcloud.sh" /usr/local/bin/sync_nextcloud.sh
