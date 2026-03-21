@@ -54,6 +54,7 @@ Servers are assigned a role, which controls:
 
 Supported roles:
 - `base`   – core system checks only
+- `backup` – dedicated backup server (rsync + B2 offsite, backup success/failure emails)
 - `mail`   – postfix/dovecot + mail queue monitoring
 - `web`    – nginx and web stack
 - `db`     – database services
@@ -93,9 +94,10 @@ scripts/ops-monitor/
 - Uses **systemd timers** (no cron)
 
 ### Email Delivery
-- Alerts and summaries are sent via `/usr/sbin/sendmail`
-- Assumes postfix is relaying through the mail server
-- `msmtprc` is present for compatibility but not required by ops-monitor
+- Alerts and summaries are sent via `/usr/sbin/sendmail` (msmtp-mta)
+- Provision installs `config/msmtprc` to `/etc/msmtprc` and copies it to `~/.msmtprc` for the admin user (so cron-running backup scripts can send mail)
+- Edit `/etc/msmtprc` or `~/.msmtprc` with your SMTP host, user, and password; the repo template uses placeholders
+- Backup role: success/failure emails use `config/backup/notify.conf` (see `config/backup/SETUP_B2.md`)
 
 ---
 
@@ -156,7 +158,8 @@ is still executed and included in the **weekly summary** to preserve existing vi
 │   ├── server_health_check.sh  # Legacy health checks
 │   └── ops-monitor/            # Monitoring & alerting bundle
 ├── config/
-│   ├── msmtprc                 # SMTP config (optional)
+│   ├── msmtprc                 # SMTP config (copied to /etc and ~/.msmtprc)
+│   ├── backup/                 # Backup configs (B2, notify recipients)
 │   └── ops-monitor/            # Monitoring configs & role overlays
 └── README.md
 ```
