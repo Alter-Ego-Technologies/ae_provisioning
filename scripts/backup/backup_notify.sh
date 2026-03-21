@@ -25,7 +25,7 @@ TO_HEADER="${TO_RAW// /, }"
 # From must match msmtprc / relay or relay may reject
 FROM="${BACKUP_NOTIFY_FROM:-server-alerts@alteregotech.com}"
 HOST=$(hostname -f 2>/dev/null || hostname)
-SUBJECT="[Backup ${STATUS}] $JOB - $HOST - $(date '+%Y-%m-%d %H:%M')"
+SUBJECT="[Backup ${STATUS}] $JOB - $HOST - $(date '+%m-%d-%Y %I:%M %p')"
 NOTIFY_ERR_LOG="${BACKUP_ROOT}/logs/backup_notify.err"
 
 BODY=$(mktemp)
@@ -33,7 +33,7 @@ BODY=$(mktemp)
   echo "Backup job: $JOB"
   echo "Status: $STATUS"
   echo "Host: $HOST"
-  echo "Time: $(date -Iseconds)"
+  echo "Time: $(date '+%m-%d-%Y %I:%M %p')"
   echo ""
   if [ -n "$LOG_FILE" ] && [ -f "$LOG_FILE" ]; then
     echo "--- Last 20 lines of log ---"

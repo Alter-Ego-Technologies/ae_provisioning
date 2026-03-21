@@ -45,13 +45,13 @@ fi
 STATUS="OK"
 [ "$FAIL" -gt 0 ] && STATUS="WARNING"
 
-SUBJECT="[Mailcow Backup Daily Summary] $STATUS - $HOST - $(date '+%Y-%m-%d')"
+SUBJECT="[Mailcow Backup Daily Summary] $STATUS - $HOST - $(date '+%m-%d-%Y %I:%M %p')"
 
 BODY=$(mktemp)
 {
   echo "Mailcow backup summary (last 24h)"
   echo "Host: $HOST"
-  echo "Date: $(date -Iseconds)"
+  echo "Date: $(date '+%m-%d-%Y %I:%M %p')"
   echo ""
   echo "Successful runs: $SUCCESS"
   echo "Failed runs:     $FAIL"
