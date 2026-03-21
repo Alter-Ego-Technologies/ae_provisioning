@@ -19,7 +19,9 @@ TO_RAW="${BACKUP_NOTIFY_TO:-admins@alteregotech.com admins@clearpointreporting.c
 # To: header requires comma-separated; convert spaces to ", "
 TO_HEADER="${TO_RAW// /, }"
 FROM="${BACKUP_NOTIFY_FROM:-server-alerts@alteregotech.com}"
+TZ="${BACKUP_NOTIFY_TZ:-}"
 HOST=$(hostname -f 2>/dev/null || hostname)
+DATE_FMT='+%m-%d-%Y %I:%M %p'
 NOTIFY_ERR_LOG="${LOG_DIR}/backup_notify.err"
 
 # Mailcow logs from last 24h
@@ -45,13 +47,13 @@ fi
 STATUS="OK"
 [ "$FAIL" -gt 0 ] && STATUS="WARNING"
 
-SUBJECT="[Mailcow Backup Daily Summary] $STATUS - $HOST - $(date '+%m-%d-%Y %I:%M %p')"
+SUBJECT="[Mailcow Backup Daily Summary] $STATUS - $HOST - $(TZ="$TZ" date "$DATE_FMT")"
 
 BODY=$(mktemp)
 {
   echo "Mailcow backup summary (last 24h)"
   echo "Host: $HOST"
-  echo "Date: $(date '+%m-%d-%Y %I:%M %p')"
+  echo "Date: $(TZ="$TZ" date "$DATE_FMT")"
   echo ""
   echo "Successful runs: $SUCCESS"
   echo "Failed runs:     $FAIL"
