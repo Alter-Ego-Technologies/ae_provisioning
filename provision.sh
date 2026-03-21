@@ -258,7 +258,7 @@ install -m 600 "$REPO_PATH/config/msmtprc" /etc/msmtprc
 chown root:root /etc/msmtprc
 touch /var/log/msmtp.log
 chown root:adm /var/log/msmtp.log
-chmod 640 /var/log/msmtp.log
+chmod 664 /var/log/msmtp.log
 
 # ---------------------------------------------------------
 # INSTALL OPS MONITOR (alerts + weekly summary)
