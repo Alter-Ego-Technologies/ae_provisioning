@@ -256,6 +256,12 @@ step "Installing msmtp packages and config"
 apt install -y msmtp msmtp-mta ca-certificates
 install -m 600 "$REPO_PATH/config/msmtprc" /etc/msmtprc
 chown root:root /etc/msmtprc
+# Copy to admin user's home so cron (running as $ADMIN_USER) can send backup/alert emails
+if [ ! -f "/home/$ADMIN_USER/.msmtprc" ]; then
+  cp /etc/msmtprc "/home/$ADMIN_USER/.msmtprc"
+  chown "$ADMIN_USER:$ADMIN_USER" "/home/$ADMIN_USER/.msmtprc"
+  chmod 600 "/home/$ADMIN_USER/.msmtprc"
+fi
 touch /var/log/msmtp.log
 chown root:adm /var/log/msmtp.log
 chmod 664 /var/log/msmtp.log
