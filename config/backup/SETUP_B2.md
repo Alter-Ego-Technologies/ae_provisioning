@@ -116,6 +116,12 @@ cat /etc/cron.d/backup-maint
 
 ---
 
+## Backup Email Notifications
+
+Success/failure emails are sent after each backup. Provision copies `config/msmtprc` to `/etc/msmtprc` and `~/.msmtprc` (admin user) so cron can send mail. Edit either file with your SMTP host, user, and password. Configure recipients in `/mnt/Backups/notify.conf` (see `config/backup/notify.conf.example`).
+
+---
+
 ## Cost Estimate (B2 Pricing)
 
 - **Storage**: ~$0.006/GB/month ($6/TB)
@@ -133,3 +139,4 @@ For ~27 GB: ~$0.16/month for storage.
 | `Authentication failed` | Verify key_id and application_key; create a new key if needed |
 | `Permission denied` on remote.conf | `chown gabe:gabe /mnt/Backups/remote.conf` |
 | Sync skipped | Ensure `RCLONE_REMOTE` is set and not the placeholder value |
+| `account default not found` / no emails | Ensure `~/.msmtprc` exists for the cron user; provision copies it on first run, or `cp /etc/msmtprc ~/.msmtprc && chmod 600 ~/.msmtprc` |
