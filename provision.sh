@@ -400,6 +400,16 @@ provision_mail() {
   step "Running MAIL role provisioning"
 
   # ---------------------------------------------------------
+  # Free ports 80/443 for Mailcow nginx (stop conflicting web servers)
+  # ---------------------------------------------------------
+  step "Stopping Apache and system nginx (Mailcow uses its own nginx)"
+  systemctl stop apache2 2>/dev/null || true
+  systemctl disable apache2 2>/dev/null || true
+  systemctl stop nginx 2>/dev/null || true
+  systemctl disable nginx 2>/dev/null || true
+  ok "Ports 80/443 freed for Mailcow"
+
+  # ---------------------------------------------------------
   # Mail-specific packages (msmtp already installed in base)
   # ---------------------------------------------------------
   apt-get update -y
