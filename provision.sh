@@ -24,9 +24,10 @@ if [[ -z "${SERVER_ROLE:-}" ]]; then
   echo -e "  ${GREEN}5)${RESET} ${BOLD}WebCyberPanel${RESET} - Both CyberPanel and custom apps together"
   echo -e "  ${GREEN}6)${RESET} ${BOLD}Nextcloud ${RESET} - Nextcloud file server stack"
   echo -e "  ${GREEN}7)${RESET} ${BOLD}Backup ${RESET} - Dedicated backup server (runs all backup scripts/crons)"
+  echo -e "  ${GREEN}8)${RESET} ${BOLD}ResetBase ${RESET} - Undo role-specific mounts/services and return to base"
   echo -e "  ${RED}0)${RESET} Quit"
   echo
-    read -p "Enter number [0-7]: " REPLY
+    read -p "Enter number [0-8]: " REPLY
   case $REPLY in
       0) echo "Quitting."; exit 0 ;;
     1) SERVER_ROLE="Base" ;;
@@ -36,6 +37,7 @@ if [[ -z "${SERVER_ROLE:-}" ]]; then
     5) SERVER_ROLE="WebCyberPanel" ;;
     6) SERVER_ROLE="Nextcloud" ;;
     7) SERVER_ROLE="Backup" ;;
+    8) SERVER_ROLE="ResetBase" ;;
     *) echo "Invalid selection"; exit 1 ;;
   esac
   export SERVER_ROLE
@@ -433,6 +435,9 @@ provision_mail() {
   install -m 0755 "$REPO_PATH/scripts/mail/domain-warmup.sh" \
     /usr/local/bin/domain-warmup.sh
 
+  install -m 0755 "$REPO_PATH/scripts/mail/merge_mail_bak.sh" \
+    /usr/local/bin/merge_mail_bak.sh
+
   # ---------------------------------------------------------
   # Mail maintenance cron (managed file, not crontab -e)
   # ---------------------------------------------------------
@@ -603,6 +608,47 @@ provision_cyberpanel() {
   ok "CYBERPANEL role provisioning complete"
 }
 
+provision_reset_base() {
+  step "Running RESET BASE role provisioning (best effort undo)"
+
+  # Stop common role services that may hold ports or mounts.
+  systemctl stop apache2 2>/dev/null || true
+  systemctl disable apache2 2>/dev/null || true
+  systemctl stop nginx 2>/dev/null || true
+  systemctl disable nginx 2>/dev/null || true
+
+  # If Mailcow exists, stop it cleanly.
+  if [ -d /opt/mailcow-dockerized ]; then
+    step "Stopping Mailcow stack"
+    docker compose -f /opt/mailcow-dockerized/docker-compose.yml down || true
+  fi
+
+  # Remove role-specific managed cron files.
+  rm -f /etc/cron.d/mail-maint /etc/cron.d/backup-maint || true
+
+  # Undo known bind mounts from non-base roles.
+  if mountpoint -q /home; then
+    if mount | grep -q "on /home type" && mount | grep -q "/mnt/web/Websites"; then
+      umount /home || true
+    fi
+  fi
+  if mountpoint -q /opt/standalone; then
+    if mount | grep -q "on /opt/standalone type" && mount | grep -q "/mnt/web/standalone"; then
+      umount /opt/standalone || true
+    fi
+  fi
+
+  # Remove stale fstab entries created by role provisioning.
+  sed -i '\|/mnt/web/Websites /home none bind|d' /etc/fstab || true
+  sed -i '\|/mnt/web/standalone /opt/standalone none bind|d' /etc/fstab || true
+
+  # Set ops-monitor role to base explicitly.
+  echo "base" > /etc/ops-monitor/role
+  chmod 0644 /etc/ops-monitor/role
+
+  ok "RESET BASE complete. Review services and run reboot if needed."
+}
+
 case "$SERVER_ROLE" in
   Mail) provision_mail ;;
   standalone)  provision_standalone ;;
@@ -610,6 +656,7 @@ case "$SERVER_ROLE" in
   WebCyberPanel) provision_standalone; provision_cyberpanel ;;
   Nextcloud) provision_nextcloud ;;
   Backup) provision_backup ;;
+  ResetBase) provision_reset_base ;;
   Base) : ;;
   *)    warn "Unknown SERVER_ROLE='$SERVER_ROLE' (no role-specific steps run)" ;;
 esac
