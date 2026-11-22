@@ -27,17 +27,25 @@ load_config() {
 
   ROLE="base"
   if [[ -f /etc/ops-monitor/role ]]; then
-    ROLE="$(tr -d ' \n\r\t' < /etc/ops-monitor/role)"
+    ROLE="$(tr -d ' \n\r\t' < /etc/ops-monitor/role | tr '[:upper:]' '[:lower:]')"
     [[ -z "$ROLE" ]] && ROLE="base"
   fi
+
+  # Map provisioning roles to their monitoring configuration overlays.
+  local role_config="$ROLE"
+  case "$ROLE" in
+    cyberpanel|webcyberpanel)
+      role_config="web"
+      ;;
+  esac
 
   if [[ -f /etc/ops-monitor/roles/base.conf ]]; then
     # shellcheck disable=SC1091
     source /etc/ops-monitor/roles/base.conf
   fi
-  if [[ -f "/etc/ops-monitor/roles/${ROLE}.conf" ]]; then
+  if [[ -f "/etc/ops-monitor/roles/${role_config}.conf" ]]; then
     # shellcheck disable=SC1090
-    source "/etc/ops-monitor/roles/${ROLE}.conf"
+    source "/etc/ops-monitor/roles/${role_config}.conf"
   fi
   if [[ -f /etc/ops-monitor/local.conf ]]; then
     # shellcheck disable=SC1091
