@@ -36,6 +36,8 @@ fi
 
 log "Dumping Nextcloud database to $SQL_OUT"
 if ssh -p ${NC_SSH_PORT} ${NC_SSH_USER}@${NC_PRI} "docker exec nextcloud_db mysqldump --single-transaction -u${DB_USER} -p'${DB_PASS}' ${DB_NAME}" > ${SQL_OUT} 2>> "$LOG_FILE"; then
+  # Record success only after file synchronization and database dump succeed.
+  touch /var/lib/ops-monitor/backup-success/nextcloud
   log "Nextcloud backup completed successfully."
   /mnt/Backups/scripts/backup_notify.sh nextcloud success "$LOG_FILE" 2>/dev/null || true
 else

@@ -36,6 +36,8 @@ rsync -aHAX --no-group -e "ssh -p ${MC_SSH_PORT} -i /home/gabe/.ssh/id_ed25519" 
 	--include="mailcow.conf" --exclude="*" \
 	${MC_SSH_USER}@${MC_PRI}:${MC_BACKUP_SRC}/ ${MC_BACKUP_DST}/ >> "$LOG_FILE" 2>&1 || true
 log "Mailcow rsync backup completed successfully."
+# Update monitoring heartbeat only after the primary backup succeeds.
+touch /var/lib/ops-monitor/backup-success/mailcow_hourly
 
 
 # Ensure mail sync is stored in /mnt/Backups/mailcow

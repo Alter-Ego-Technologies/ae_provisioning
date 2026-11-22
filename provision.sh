@@ -303,7 +303,7 @@ install -m 0644 "$REPO_PATH/config/ops-monitor/roles/"*.conf /etc/ops-monitor/ro
 
 # Set server role (before installing systemd units)
 SERVER_ROLE="${SERVER_ROLE:-base}"
-echo "$SERVER_ROLE" > /etc/ops-monitor/role
+echo "${SERVER_ROLE,,}" > /etc/ops-monitor/role
 chmod 0644 /etc/ops-monitor/role
 
 # ---------------------------------------------------------
@@ -330,10 +330,9 @@ provision_backup() {
   mkdir -p $BACKUP_ROOT/cyberpanel/{home,db}
   mkdir -p $BACKUP_ROOT/standalone
 
-  # Set ownership to ADMIN_USER so backup scripts can run as that user
-  chown -R $ADMIN_USER:$ADMIN_USER $BACKUP_ROOT
-  chmod 755 $BACKUP_ROOT
-  chmod -R 755 $BACKUP_ROOT/{scripts,logs,nextcloud,mailcow,cyberpanel,standalone}
+  # Preserve existing backup data, ownership, and permissions.
+  # New directories were created above; script installation handles
+  # ownership of newly installed files individually.
 
   # 2. Install required tools (rclone for S3/B2 offsite sync)
   apt-get update -y
@@ -352,50 +351,76 @@ provision_backup() {
     ok "Installed notify.conf at $BACKUP_ROOT/notify.conf (edit BACKUP_NOTIFY_TO for recipients)"
   fi
 
-  # 4. Install backup scripts from repo
-  install -m 0755 "$REPO_PATH/scripts/backup/sync_nextcloud.sh" $BACKUP_ROOT/scripts/sync_nextcloud.sh
-  install -m 0755 "$REPO_PATH/scripts/backup/sync_mailcow.sh" $BACKUP_ROOT/scripts/sync_mailcow.sh
-  install -m 0755 "$REPO_PATH/scripts/backup/sync_cyberpanel.sh" $BACKUP_ROOT/scripts/sync_cyberpanel.sh
-  install -m 0755 "$REPO_PATH/scripts/backup/sync_standalone.sh" $BACKUP_ROOT/scripts/sync_standalone.sh
-  install -m 0755 "$REPO_PATH/scripts/backup/sync_all_web.sh" $BACKUP_ROOT/scripts/sync_all_web.sh
-  install -m 0755 "$REPO_PATH/scripts/backup/sync_to_cloud.sh" $BACKUP_ROOT/scripts/sync_to_cloud.sh
-  install -m 0755 "$REPO_PATH/scripts/backup/backup_notify.sh" $BACKUP_ROOT/scripts/backup_notify.sh
-  install -m 0755 "$REPO_PATH/scripts/backup/backup_mailcow_daily_summary.sh" $BACKUP_ROOT/scripts/backup_mailcow_daily_summary.sh
-  chown -R $ADMIN_USER:$ADMIN_USER $BACKUP_ROOT/scripts
+  # Create the monitoring heartbeat directory without altering existing files.
+  install -d -m 0750 -o "$ADMIN_USER" -g "$ADMIN_USER" \
+    /var/lib/ops-monitor/backup-success
 
-  # Also install to /usr/local/bin for global access
-  install -m 0755 "$REPO_PATH/scripts/backup/sync_nextcloud.sh" /usr/local/bin/sync_nextcloud.sh
-  install -m 0755 "$REPO_PATH/scripts/backup/sync_mailcow.sh" /usr/local/bin/sync_mailcow.sh
-  install -m 0755 "$REPO_PATH/scripts/backup/sync_cyberpanel.sh" /usr/local/bin/sync_cyberpanel.sh
-  install -m 0755 "$REPO_PATH/scripts/backup/sync_standalone.sh" /usr/local/bin/sync_standalone.sh
-  install -m 0755 "$REPO_PATH/scripts/backup/sync_all_web.sh" /usr/local/bin/sync_all_web.sh
-  install -m 0755 "$REPO_PATH/scripts/backup/sync_to_cloud.sh" /usr/local/bin/sync_to_cloud.sh
-  install -m 0755 "$REPO_PATH/scripts/backup/backup_notify.sh" /usr/local/bin/backup_notify.sh
-  install -m 0755 "$REPO_PATH/scripts/backup/backup_mailcow_daily_summary.sh" /usr/local/bin/backup_mailcow_daily_summary.sh
+  # Install missing backup scripts without overwriting production copies.
+  for source in "$REPO_PATH"/scripts/backup/*.sh; do
+    [[ -f "$source" ]] || continue
+    name="${source##*/}"
+    destination="$BACKUP_ROOT/scripts/$name"
+
+    owner="$ADMIN_USER"
+    group="$ADMIN_USER"
+    mode="0755"
+
+    case "$name" in
+      backup_mailcow_official.sh)
+        mode="0700"
+        ;;
+      backup_webadmin_db.sh)
+        mode="0750"
+        ;;
+      sync_webadmin_websites.sh)
+        owner="root"
+        group="root"
+        mode="0750"
+        ;;
+    esac
+
+    if [[ ! -e "$destination" ]]; then
+      install -m "$mode" -o "$owner" -g "$group" "$source" "$destination"
+      ok "Installed missing backup script: $name"
+    else
+      ok "Preserved existing backup script: $name"
+    fi
+  done
 
   ok "BACKUP role provisioning complete"
 
   # 5. Install managed cron for backup scripts
   step "Installing backup cron schedule"
+  if [[ -e /etc/cron.d/backup-maint ]]; then
+    ok "Preserving existing backup cron schedule"
+  else
   cat > /etc/cron.d/backup-maint <<EOF
 SHELL=/bin/bash
 PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 
 # Mailcow: every hour
 0 * * * * ${ADMIN_USER} /mnt/Backups/scripts/sync_mailcow.sh >> /mnt/Backups/logs/mailcow-cron.log 2>&1
+# Mailcow official full backup: nightly at 00:15
+15 0 * * * ${ADMIN_USER} /mnt/Backups/scripts/backup_mailcow_official.sh full >> /mnt/Backups/logs/mailcow-full-cron.log 2>&1
 # Nextcloud: nightly at 2:15
 15 2 * * * ${ADMIN_USER} /mnt/Backups/scripts/sync_nextcloud.sh >> /mnt/Backups/logs/nextcloud-cron.log 2>&1
-# CyberPanel: nightly at 3:15
-15 3 * * * ${ADMIN_USER} /mnt/Backups/scripts/sync_cyberpanel.sh >> /mnt/Backups/logs/cyberpanel-cron.log 2>&1
+# WebAdmin websites: nightly at 3:15
+15 3 * * * root /mnt/Backups/scripts/sync_webadmin_websites.sh >> /mnt/Backups/logs/webadmin-websites-cron.log 2>&1
+# WebAdmin database: nightly at 4:15
+15 4 * * * ${ADMIN_USER} /mnt/Backups/scripts/backup_webadmin_db.sh >> /mnt/Backups/logs/webadmin-db-cron.log 2>&1
+# Legacy CyberPanel backup: disabled by default.
+# Enable only if a separate CyberPanel backup is configured.
+# 15 3 * * * ${ADMIN_USER} /mnt/Backups/scripts/sync_cyberpanel.sh >> /mnt/Backups/logs/cyberpanel-cron.log 2>&1
 # Standalone: nightly at 4:15
-15 4 * * * ${ADMIN_USER} /mnt/Backups/scripts/sync_standalone.sh >> /mnt/Backups/logs/standalone-cron.log 2>&1
+# DISABLED UNTIL CONFIGURED: 15 4 * * * ${ADMIN_USER} /mnt/Backups/scripts/sync_standalone.sh >> /mnt/Backups/logs/standalone-cron.log 2>&1
 # S3/B2 offsite: nightly at 5:15 (after all local backups complete)
-15 5 * * * ${ADMIN_USER} /mnt/Backups/scripts/sync_to_cloud.sh >> /mnt/Backups/logs/cloud-cron.log 2>&1
+# DISABLED UNTIL ENCRYPTION VERIFIED: 15 5 * * * ${ADMIN_USER} /mnt/Backups/scripts/sync_to_cloud.sh >> /mnt/Backups/logs/cloud-cron.log 2>&1
 # Mailcow backup daily summary (one email/day instead of hourly)
 0 6 * * * ${ADMIN_USER} /mnt/Backups/scripts/backup_mailcow_daily_summary.sh >> /mnt/Backups/logs/mailcow-summary-cron.log 2>&1
 EOF
   chmod 0644 /etc/cron.d/backup-maint
   ok "Backup cron schedule installed"
+  fi
 }
 
 provision_mail() {

@@ -182,6 +182,54 @@ backup_check() {
   emit_change "backup" "$status" "Backup heartbeat age ${age_h}h (file=${file})"
 }
 
+
+backup_jobs_check() {
+  # Disabled until the initial heartbeat rollout is complete.
+  [[ "${BACKUP_JOBS_ENABLED:-no}" == "yes" ]] || return 0
+  [[ "${ROLE:-base}" == "backup" ]] || return 0
+
+  local root="${BACKUP_JOBS_DIR:-/var/lib/ops-monitor/backup-success}"
+  local name warn_h crit_h file mtime now age_s age_h status
+
+  now="$(date +%s)"
+
+  while read -r name warn_h crit_h; do
+    [[ -n "$name" ]] || continue
+
+    file="$root/$name"
+
+    if [[ ! -f "$file" ]]; then
+      emit_change "backup_${name}" "CRIT" "Backup heartbeat missing: $name ($file)"
+      continue
+    fi
+
+    mtime="$(stat -c %Y "$file" 2>/dev/null || echo 0)"
+    age_s=$(( now - mtime ))
+
+    if (( age_s < 0 )); then
+      emit_change "backup_${name}" "CRIT" "Backup heartbeat has future timestamp: $name"
+      continue
+    fi
+
+    age_h=$(( age_s / 3600 ))
+    status="OK"
+
+    if (( age_s >= crit_h * 3600 )); then
+      status="CRIT"
+    elif (( age_s >= warn_h * 3600 )); then
+      status="WARN"
+    fi
+
+    emit_change "backup_${name}" "$status" "Backup $name heartbeat age ${age_h}h (WARN=${warn_h}h, CRIT=${crit_h}h)"
+  done <<'BACKUP_JOBS'
+mailcow_hourly 2 4
+mailcow_full 36 48
+nextcloud 36 48
+webadmin_websites 36 48
+webadmin_database 36 48
+BACKUP_JOBS
+}
+
 postfix_queue_counts() {
   if ! command -v postqueue >/dev/null 2>&1; then
     echo "0 0"; return
@@ -249,6 +297,7 @@ if [[ "${ROLE:-base}" != "mail" ]]; then
 fi
 cert_check
 backup_check
+backup_jobs_check
 mail_check
 container_check
 
