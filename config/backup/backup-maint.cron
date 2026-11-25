@@ -1,0 +1,37 @@
+SHELL=/bin/bash
+PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+
+# All daily jobs scheduled in Central Time.
+# All backup jobs initiated by alterego.
+
+# Mailcow hourly synchronization
+0 * * * * alterego /usr/bin/sudo -n -H /usr/local/sbin/ae-backup/ae-backup-run mailcow-hourly
+
+# Mailcow official full backup
+5 1 * * * alterego /usr/bin/sudo -n -H /usr/local/sbin/ae-backup/ae-backup-run mailcow-full
+
+# Nextcloud file snapshot and synchronization
+15 2 * * * alterego /usr/bin/sudo -n -H /usr/local/sbin/ae-backup/ae-backup-run nextcloud-snapshot
+25 2 * * * alterego /usr/bin/sudo -n -H /usr/local/sbin/ae-backup/ae-backup-run nextcloud-sync
+
+# Nextcloud SQL/config retention
+45 2 * * * alterego /usr/bin/sudo -n -H /usr/local/sbin/ae-backup/ae-backup-run nextcloud-sql-retention
+
+# Nextcloud file-history retention
+55 2 * * * alterego /usr/bin/sudo -n -H /usr/local/sbin/ae-backup/ae-backup-run nextcloud-file-retention
+
+# WebAdmin backups
+5 3 * * * alterego /usr/bin/sudo -n -H /usr/local/sbin/ae-backup/ae-backup-run webadmin-db
+15 3 * * * alterego /usr/bin/sudo -n -H /usr/local/sbin/ae-backup/ae-backup-run webadmin-websites
+45 3 * * * alterego /usr/bin/sudo -n -H /usr/local/sbin/ae-backup/ae-backup-run cardiq-dev
+
+# Standalone backup
+15 4 * * * alterego /usr/bin/sudo -n -H /usr/local/sbin/ae-backup/ae-backup-run standalone
+
+# Mailcow B2 retention: dry-run only
+30 4 * * * alterego /usr/bin/sudo -n -H /usr/local/sbin/ae-backup/ae-backup-run mailcow-b2-retention
+
+# General encrypted B2 remains disabled pending migration.
+
+# Mailcow daily summary
+50 4 * * * alterego /usr/bin/sudo -n -H /usr/local/sbin/ae-backup/ae-backup-run mailcow-summary

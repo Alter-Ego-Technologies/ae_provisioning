@@ -227,6 +227,7 @@ mailcow_full 36 48
 nextcloud 36 48
 webadmin_websites 36 48
 webadmin_database 36 48
+cardiq_dev 36 48
 BACKUP_JOBS
 }
 

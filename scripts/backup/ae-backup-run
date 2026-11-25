@@ -1,0 +1,154 @@
+#!/usr/bin/env bash
+set -Eeuo pipefail
+umask 077
+
+export HOME=/root
+export PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+export RCLONE_CONFIG=/root/.config/rclone/rclone.conf
+export TZ=America/Chicago
+
+ROOT="/mnt/Backups"
+BIN="/usr/local/sbin/ae-backup"
+LOGS="$ROOT/logs"
+
+[[ $EUID -eq 0 ]] || {
+    echo "ERROR: Privileged execution required" >&2
+    exit 1
+}
+
+[[ $# -eq 1 ]] || {
+    echo "Usage: ae-backup-run JOB" >&2
+    exit 2
+}
+
+JOB="$1"
+LOCK=()
+ARGS=()
+
+case "$JOB" in
+    mailcow-hourly)
+        SCRIPT="sync_mailcow.sh"
+        LOG="mailcow-cron.log"
+        LOCK=(/usr/bin/flock -w 300 "$ROOT/.mailcow-schedule.lock")
+        ;;
+    mailcow-full)
+        SCRIPT="backup_mailcow_official.sh"
+        LOG="mailcow-full-cron.log"
+        ARGS=(full)
+        LOCK=(/usr/bin/flock -w 300 "$ROOT/.mailcow-schedule.lock")
+        ;;
+    nextcloud-snapshot)
+        SCRIPT="snapshot_nextcloud_files.sh"
+        LOG="nextcloud-snapshots.log"
+        ;;
+    nextcloud-sync)
+        SCRIPT="sync_nextcloud.sh"
+        LOG="nextcloud-cron.log"
+        ;;
+    nextcloud-sql-retention)
+        SCRIPT="retention_nextcloud_sql.sh"
+        LOG="nextcloud-sql-retention.log"
+        ARGS=(--execute)
+        LOCK=(/usr/bin/flock -n "$ROOT/.nextcloud-backup.lock")
+        ;;
+    nextcloud-file-retention)
+        SCRIPT="retention_nextcloud_files.sh"
+        LOG="nextcloud-file-retention.log"
+        ARGS=(--execute)
+        ;;
+    cardiq-dev)
+        SCRIPT="backup_cardiq_dev.sh"
+        LOG="cardiq-dev-cron.log"
+        LOCK=(/usr/bin/flock -w 300 "$ROOT/.cardiq-dev-backup.lock")
+        ;;
+    webadmin-db)
+        SCRIPT="backup_webadmin_db.sh"
+        LOG="webadmin-db-cron.log"
+        ;;
+    webadmin-websites)
+        SCRIPT="sync_webadmin_websites.sh"
+        LOG="webadmin-websites-cron.log"
+        ;;
+    standalone)
+        SCRIPT="sync_standalone.sh"
+        LOG="standalone-cron.log"
+        ;;
+    mailcow-b2-retention)
+        SCRIPT="retention_mailcow_b2.sh"
+        LOG="mailcow-b2-retention.log"
+        ARGS=(--dry-run)
+        ;;
+    mailcow-summary)
+        SCRIPT="backup_mailcow_daily_summary.sh"
+        LOG="mailcow-summary-cron.log"
+        ;;
+    *)
+        echo "ERROR: Unknown backup job: $JOB" >&2
+        exit 2
+        ;;
+esac
+
+mountpoint -q "$ROOT" || {
+    echo "ERROR: Backup volume not mounted" >&2
+    exit 1
+}
+
+[[ -d "$LOGS" && ! -L "$LOGS" ]] || {
+    echo "ERROR: Missing or unsafe log directory" >&2
+    exit 1
+}
+
+[[ ! -L "$LOGS/$LOG" ]] || {
+    echo "ERROR: Unsafe log file" >&2
+    exit 1
+}
+
+[[ -f "$BIN/$SCRIPT" && ! -L "$BIN/$SCRIPT" && -x "$BIN/$SCRIPT" ]] || {
+    echo "ERROR: Missing or unsafe backup executable" >&2
+    exit 1
+}
+
+# Verify remote source storage before synchronization.
+SSH_CONFIG="/etc/ae-backup/ssh_config"
+
+check_source() {
+    local host="$1"
+    local source="$2"
+    local marker="${3:-}"
+
+    if ! ssh -n -F "$SSH_CONFIG" "$host" \
+        "mountpoint -q '$source' && sudo -n test -d '$source'"; then
+        echo "ERROR: Source storage unavailable: $host:$source" >&2
+        return 1
+    fi
+
+    if [[ -n "$marker" ]]; then
+        if ! ssh -n -F "$SSH_CONFIG" "$host" \
+            "sudo -n test -f '$source/$marker'"; then
+            echo "ERROR: Source marker missing: $host:$source/$marker" >&2
+            return 1
+        fi
+    fi
+
+    echo "PASS: Source storage verified: $host:$source"
+}
+
+case "$JOB" in
+    mailcow-hourly|mailcow-full)
+        check_source 10.0.0.2 /mnt/Mail
+        ;;
+    nextcloud-sync)
+        check_source 10.0.2.2 /mnt/DepDock .ncdata
+        ;;
+    webadmin-websites)
+        check_source 10.0.1.2 /home
+        ;;
+    standalone)
+        check_source 10.0.1.2 /opt/standalone
+        ;;
+esac >> "$LOGS/$LOG" 2>&1
+
+cd /
+
+exec "${LOCK[@]}" "$BIN/$SCRIPT" "${ARGS[@]}" \
+    >> "$LOGS/$LOG" 2>&1
