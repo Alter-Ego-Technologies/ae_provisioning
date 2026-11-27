@@ -55,6 +55,9 @@ var/backups/cardiq-dev/
 var/log/cardiq-dev-deploy/
 etc/systemd/system/cardiq-dev-queue.service
 etc/systemd/system/multi-user.target.wants/cardiq-dev-queue.service
+etc/systemd/system/cardiq-dev-scheduler.service
+etc/systemd/system/cardiq-dev-scheduler.timer
+etc/systemd/system/timers.target.wants/cardiq-dev-scheduler.timer
 PATHS
 
 OPTIONS=(
