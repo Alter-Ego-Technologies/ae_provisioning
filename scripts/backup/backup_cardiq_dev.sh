@@ -53,6 +53,8 @@ etc/sudoers.d/cardiq-dev-deploy
 etc/sudoers.d/cardiq-dev-deploy-alterego
 var/backups/cardiq-dev/
 var/log/cardiq-dev-deploy/
+etc/systemd/system/cardiq-dev-queue.service
+etc/systemd/system/multi-user.target.wants/cardiq-dev-queue.service
 PATHS
 
 OPTIONS=(
